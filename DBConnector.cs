@@ -11,10 +11,13 @@ using System.IO;
 
 namespace nopCommerceReplicatorServices
 {
+    /// <summary>
+    /// <c>DBConnector</c> is a class that provides a connection to the database.
+    /// </summary>
     public class DBConnector
     {
         private readonly string _connectionString;
-        private SqlConnection _connection;
+        private SqlConnection _connection { get; set; }
 
         public DBConnector(string connectionStringFromSettings)
         {
@@ -27,13 +30,19 @@ namespace nopCommerceReplicatorServices
 
             if (string.IsNullOrEmpty(_connectionString))
             {
-                throw new InvalidOperationException("The connection string is not initialized.");
+                throw new InvalidOperationException("The connection string has not been initialized.");
             }
         }
 
-        public void InitializeAndOpenConnection()
+        public void Initialize()
         {
             _connection = new SqlConnection(_connectionString);
+        }
+
+        public void OpenConnection()
+        {
+            if (_connection == null)
+                throw new Exception("DBConnector has no initialize connection. Use Initialize() before OpenConnection()");
             _connection.Open();
         }
 
