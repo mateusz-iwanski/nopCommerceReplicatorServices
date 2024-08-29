@@ -21,6 +21,8 @@ using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Customer;
 using nopCommerceWebApiClient.Objects.Customer;
+using nopCommerceReplicatorServices.nopCommerce;
+using System.Diagnostics;
 
 internal partial class Program
 {
@@ -45,17 +47,24 @@ internal partial class Program
             "Show help information"
         );
 
+        // Show details output
+        var showDetailsOption = new Option<bool>(
+            "--show_details",
+            "Show details output"
+        );
+
         // Create a root command with the defined options
         var rootCommand = new RootCommand
         {
             repCustomerIdOption,
             shCustomerIdOption,
-            helpOption
+            helpOption,
+            showDetailsOption
         };
 
         rootCommand.Description = "nopCommerce Replicator Services";
 
-        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help) =>
+        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption) =>
         {
             if (help)
             {
@@ -70,25 +79,15 @@ internal partial class Program
             }
 
             if (repCustomerId > 0)
-            {
+            {                                
+                ICustomer customerNopCommerceService = serviceConfigurationBuilder.GetService<ICustomer>("CustomerNopCommerce");
+                ICustomerSourceData customerDataSourceService = serviceConfigurationBuilder.GetService<ICustomerSourceData>("CustomerGT");
 
-                Console.WriteLine($"Replicate customer with ID: {repCustomerId} from SubiektGT");
-                
-                ICustomer customerService = serviceConfigurationBuilder.GetService<ICustomer>("CustomerGT");
+                var response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService);
 
-                var response = await customerService.CreatePLById(repCustomerId);
+                Console.WriteLine($"Replicate customer with ID: {repCustomerId} from SubiektGT --- Status code: {(int)response.StatusCode}");
 
-                var methodInfo = typeof(CustomerGT).GetMethod("CreatePLById");
-
-                if (methodInfo == null)
-                {
-                    Console.WriteLine("Method 'CreatePLById' not found in 'CustomerGT'.");
-                    return;
-                }
-
-                await AttributeHelper.CheckAndDeserializeResponseAsync(methodInfo, response);
-
-                Console.WriteLine($"Response: {await response.Content.ReadAsStringAsync()}");
+                if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
             }
 
             if (shCustomerId > 0)
@@ -96,14 +95,14 @@ internal partial class Program
 
                 Console.WriteLine($"Show customer with ID: {shCustomerId} from SubiektGT");
 
-                ICustomer customerService = serviceConfigurationBuilder.GetService<ICustomer>("CustomerGT");
+                ICustomerSourceData customerDataSourceService = serviceConfigurationBuilder.GetService<ICustomerSourceData>("CustomerGT");
 
-                var response = customerService.GetCustomerFromSubiekt(shCustomerId);
+                var response = customerDataSourceService.GetCustomer(shCustomerId);
 
                 Console.WriteLine($"Response: {response}");
             }
 
-        }, repCustomerIdOption, shCustomerIdOption, helpOption);
+        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption);
 
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
