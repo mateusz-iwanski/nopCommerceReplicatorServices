@@ -11,5 +11,6 @@ namespace nopCommerceReplicatorServices.Services
     {
         Task<HttpResponseMessage> CreatePLById(int customerId);
         Task<HttpResponseMessage> CreatePL(CustomerCreatePLDto customer);
+        CustomerCreatePLDto? GetCustomerFromSubiekt(int customerId);
     }
 }
