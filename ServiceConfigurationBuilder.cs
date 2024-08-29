@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using nopCommerceReplicatorServices.Helpers;
+using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient;
@@ -16,19 +16,38 @@ namespace nopCommerceReplicatorServices
         private IServiceCollection services = new ServiceCollection();
         private readonly ServiceProvider _serviceProvider;
 
-        private readonly Dictionary<string, Type> _customerImplementations = new Dictionary<string, Type>
-            {
-                { "CustomerGT", typeof(CustomerGT) },
-            };
-
         /// <summary>
         /// Initializes a new instance of the ServiceConfigurationBuilder class.
         /// </summary>
         public ServiceConfigurationBuilder()
         {
-            services.AddFactory<ICustomer>(_customerImplementations);
+            var services = new ServiceCollection();
+
+            // Register services with keys
+            services.AddScoped<CustomerNopCommerce>();
+            services.AddScoped<CustomerGT>();
 
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
+
+            // nopCommerce services
+            services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
+            {
+                return key switch
+                {
+                    "CustomerNopCommerce" => serviceProvider.GetService<CustomerNopCommerce>() as ICustomer,                    
+                    _ => throw new ArgumentException($"Unknown key: {key}")
+                };
+            });
+
+            // source services
+            services.AddScoped<Func<string, ICustomerSourceData>>(serviceProvider => key =>
+            {
+                return key switch
+                {
+                    "CustomerGT" => serviceProvider.GetService<CustomerGT>() as ICustomerSourceData,
+                    _ => throw new ArgumentException($"Unknown key: {key}")
+                };
+            });
 
             _serviceProvider = services.BuildServiceProvider();
         }
@@ -47,24 +66,6 @@ namespace nopCommerceReplicatorServices
                 throw new InvalidOperationException($"Factory for type {typeof(T).Name} not found.");
             }
             return factory(key);
-        }
-
-        /// <summary>
-        /// Builds the service provider and registers the all implementations.
-        /// </summary>
-        public void Build()
-        {
-            services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
-            {
-                return key switch
-                {
-                    "CustomerGT" => serviceProvider.GetService<CustomerGT>() as ICustomer,
-                    _ => throw new ArgumentException($"Unknown key: {key}")
-                };
-            });
-
-            // Build the service provider
-            var serviceProvider = services.BuildServiceProvider();
         }
     }
 }
