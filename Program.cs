@@ -1,6 +1,9 @@
 ﻿using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Data.SqlClient;
@@ -26,9 +29,14 @@ internal partial class Program
         ServiceConfigurationBuilder serviceConfigurationBuilder = new ServiceConfigurationBuilder();
 
         // Define the command-line options
-        var customerIdOption = new Option<int>(
-            "--subiekt_gt_customerId",
+        var repCustomerIdOption = new Option<int>(
+            "--replicate_subiekt_gt_customerId",
             "The customer ID in Subiekt GT that is to be replicated"
+        );
+
+        var shCustomerIdOption = new Option<int>(
+            "--show_subiekt_gt_customerId",
+            "The customer ID in Subiekt GT that is to be show"
         );
 
         // Create a help option
@@ -40,13 +48,14 @@ internal partial class Program
         // Create a root command with the defined options
         var rootCommand = new RootCommand
         {
-            customerIdOption,
+            repCustomerIdOption,
+            shCustomerIdOption,
             helpOption
         };
 
         rootCommand.Description = "nopCommerce Replicator Services";
 
-        rootCommand.SetHandler(async (int customerId, bool help) =>
+        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help) =>
         {
             if (help)
             {
@@ -54,20 +63,20 @@ internal partial class Program
                 return;
             }
 
-            if (customerId == 0)
+            if (repCustomerId == 0 && shCustomerId == 0)
             {
                 Console.WriteLine("Invalid or missing customer ID.");
                 return;
             }
 
-            if (customerId > 0)
+            if (repCustomerId > 0)
             {
 
-                Console.WriteLine($"Replicate customer with ID: {customerId} from SubiektGT");
+                Console.WriteLine($"Replicate customer with ID: {repCustomerId} from SubiektGT");
                 
                 ICustomer customerService = serviceConfigurationBuilder.GetService<ICustomer>("CustomerGT");
 
-                var response = await customerService.CreatePLById(customerId);
+                var response = await customerService.CreatePLById(repCustomerId);
 
                 var methodInfo = typeof(CustomerGT).GetMethod("CreatePLById");
 
@@ -82,7 +91,19 @@ internal partial class Program
                 Console.WriteLine($"Response: {await response.Content.ReadAsStringAsync()}");
             }
 
-        }, customerIdOption, helpOption);
+            if (shCustomerId > 0)
+            {
+
+                Console.WriteLine($"Show customer with ID: {shCustomerId} from SubiektGT");
+
+                ICustomer customerService = serviceConfigurationBuilder.GetService<ICustomer>("CustomerGT");
+
+                var response = customerService.GetCustomerFromSubiekt(shCustomerId);
+
+                Console.WriteLine($"Response: {response}");
+            }
+
+        }, repCustomerIdOption, shCustomerIdOption, helpOption);
 
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
