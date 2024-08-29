@@ -51,7 +51,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
             dbConnector.Initialize();
         }
 
-        protected CustomerCreatePLDto? GetCustomerFromSubiekt(int customerId)
+        public CustomerCreatePLDto? GetCustomerFromSubiekt(int customerId)
         {
 
             var query = @$"
