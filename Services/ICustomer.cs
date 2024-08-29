@@ -9,8 +9,6 @@ namespace nopCommerceReplicatorServices.Services
 {
     public interface ICustomer
     {
-        Task<HttpResponseMessage> CreatePLById(int customerId);
-        Task<HttpResponseMessage> CreatePL(CustomerCreatePLDto customer);
-        CustomerCreatePLDto? GetCustomerFromSubiekt(int customerId);
+        Task<HttpResponseMessage> CreatePL(int customerId, ICustomerSourceData customerGate);
     }
 }
