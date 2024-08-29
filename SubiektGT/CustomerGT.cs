@@ -25,33 +25,18 @@ namespace nopCommerceReplicatorServices.SubiektGT
     /// <summary>
     /// Represents a customer in Subiekt GT
     /// </summary>
-    public class CustomerGT : ICustomer
+    public class CustomerGT : ICustomerSourceData
     {        
-        private ICustomerService _customerApi { get; set; }
         private DBConnector dbConnector { get; set; }
-        public record kh__Kontrahent(
-            int kh_Id, 
-            string kh_Imie, 
-            string kh_Nazwisko, 
-            string kh_Symbol, 
-            string kh_email, 
-            string adr_Nazwa,
-            string adr_NIP,
-            string adr_Adres,
-            string adr_Telefon,
-            string adr_Miejscowosc,
-            string woj_nazwa
-            );
 
-        public CustomerGT(IApiConfigurationServices apiServices)
+        public CustomerGT()
         {
-            _customerApi = apiServices.CustomerService;
-
             dbConnector = new DBConnector("SubiektGTConnection");
             dbConnector.Initialize();
+            return;
         }
 
-        public CustomerCreatePLDto? GetCustomerFromSubiekt(int customerId)
+        public CustomerCreatePLDto? GetCustomer(int customerId)
         {
 
             var query = @$"
@@ -106,21 +91,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
             return null;
         }
 
-        [DeserializeResponse]
-        public async Task<HttpResponseMessage> CreatePLById(int customerId)
-        {
-            var customer = GetCustomerFromSubiekt(customerId) ?? throw new ArgumentException($"The Subiekt GT customer with the ID {customerId} does not exist");
-            var response = await CreatePL(customer);
-            return response;
-        }
-
-        [DeserializeResponse]
-        public async Task<HttpResponseMessage> CreatePL(CustomerCreatePLDto customer)
-        {
-            var response = await _customerApi.CreatePLAsync(customer);
-
-            return response;
-        }
+        
 
     }
 }
