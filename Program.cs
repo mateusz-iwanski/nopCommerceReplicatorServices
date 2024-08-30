@@ -23,12 +23,14 @@ using nopCommerceWebApiClient.Interfaces.Customer;
 using nopCommerceWebApiClient.Objects.Customer;
 using nopCommerceReplicatorServices.nopCommerce;
 using System.Diagnostics;
+using Microsoft.Extensions.Hosting;
 
 internal partial class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        ServiceConfigurationBuilder serviceConfigurationBuilder = new ServiceConfigurationBuilder();
+        var host = CreateHostBuilder(args).Build();
+        var serviceProvider = host.Services;
 
         // Define the command-line options
         var repCustomerIdOption = new Option<int>(
@@ -80,26 +82,27 @@ internal partial class Program
 
             if (repCustomerId > 0)
             {                                
-                ICustomer customerNopCommerceService = serviceConfigurationBuilder.GetService<ICustomer>("CustomerNopCommerce");
-                ICustomerSourceData customerDataSourceService = serviceConfigurationBuilder.GetService<ICustomerSourceData>("CustomerGT");
+                ICustomer customerNopCommerceService = serviceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
+                ICustomerSourceData customerDataSourceService = serviceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()("CustomerGT");
 
                 var response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService);
 
-                Console.WriteLine($"Replicate customer with ID: {repCustomerId} from SubiektGT --- Status code: {(int)response.StatusCode}");
+                Console.WriteLine($"Replicate customer with ID: {repCustomerId} from SubiektGT --- Status code: {(int)response.StatusCode} ({response.StatusCode})");
 
                 if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
             }
 
             if (shCustomerId > 0)
             {
-
                 Console.WriteLine($"Show customer with ID: {shCustomerId} from SubiektGT");
 
-                ICustomerSourceData customerDataSourceService = serviceConfigurationBuilder.GetService<ICustomerSourceData>("CustomerGT");
+                ICustomerSourceData customerDataSourceService = serviceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()("CustomerGT");
 
-                var response = customerDataSourceService.GetCustomer(shCustomerId);
+                var response = customerDataSourceService.Get("kH_Id", shCustomerId);
 
-                Console.WriteLine($"Response: {response}");
+                if (response!=null)
+                    foreach (var customer in response)
+                        Console.WriteLine($"Response: {customer.ToString()}");
             }
 
         }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption);
@@ -107,4 +110,12 @@ internal partial class Program
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
     }
+
+    public static IHostBuilder CreateHostBuilder(string[] args) =>
+       Host.CreateDefaultBuilder(args)
+           .ConfigureServices((_, services) =>
+           {
+               var startup = new Startup();
+               startup.ConfigureServices(services);
+           });
 }
