@@ -17,7 +17,7 @@ namespace nopCommerceReplicatorServices
     public class DBConnector
     {
         private readonly string _connectionString;
-        private SqlConnection _connection { get; set; }
+        public SqlConnection _connection { get; private set; }
 
         public DBConnector(string connectionStringFromSettings)
         {
@@ -46,11 +46,14 @@ namespace nopCommerceReplicatorServices
             _connection.Open();
         }
 
-        public SqlDataReader ExecuteQuery(string query)
+        public void ExecuteQuery(string query, Action<SqlDataReader> work)
         {
             using (SqlCommand command = new SqlCommand(query, _connection))
             {
-                return command.ExecuteReader();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    work(reader);
+                }
             }
         }
 
