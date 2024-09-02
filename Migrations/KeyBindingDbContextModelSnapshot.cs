@@ -21,7 +21,7 @@ namespace nopCommerceReplicatorServices.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("nopCommerceReplicatorServices.DataBinding.Customer", b =>
+            modelBuilder.Entity("nopCommerceReplicatorServices.DataBinding.CustomerDataBinding", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
