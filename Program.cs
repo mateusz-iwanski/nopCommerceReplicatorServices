@@ -35,11 +35,11 @@ internal partial class Program
         // Define the command-line options
         var repCustomerIdOption = new Option<int>(
             "--replicate_subiekt_gt_customerId",
-            "The customer ID in Subiekt GT that is to be replicated"
+            "The customer ID in Subiekt GT that is to be replicated. If not exists add, if exists update."
         );
 
         var shCustomerIdOption = new Option<int>(
-            "--show_subiekt_gt_customerId",
+            "--show_service_customerId",
             "The customer ID in Subiekt GT that is to be show"
         );
 
@@ -55,9 +55,15 @@ internal partial class Program
             "Show details output"
         );
 
+        var serviceToReplicate = new Option<string>(
+            "--replicate_service",
+            $"Set sercice to replicate. Available services - {string.Join(',', Enum.GetNames(typeof(Service)))}"
+        );
+
         // Create a root command with the defined options
         var rootCommand = new RootCommand
         {
+            serviceToReplicate,
             repCustomerIdOption,
             shCustomerIdOption,
             helpOption,
@@ -66,35 +72,60 @@ internal partial class Program
 
         rootCommand.Description = "nopCommerce Replicator Services";
 
-        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption) =>
+        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate) =>
         {
+            Service service;
+
+            if (!string.IsNullOrEmpty(serviceToReplicate))
+            {
+                if (!Enum.TryParse<Service>(serviceToReplicate, out service))
+                {
+                    Console.WriteLine($"Invalid service to replicate: {serviceToReplicate}");
+                    return;
+                }
+            }
+
             if (help)
             {
                 rootCommand.Invoke("-h");
                 return;
             }
 
-            if (repCustomerId == 0 && shCustomerId == 0)
-            {
-                Console.WriteLine("Invalid or missing customer ID.");
-                return;
-            }
-
             if (repCustomerId > 0)
-            {                                
+            {                     
+                if (string.IsNullOrEmpty(serviceToReplicate))
+                {
+                    Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
+                    return;
+                }
+
                 ICustomer customerNopCommerceService = serviceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
                 ICustomerSourceData customerDataSourceService = serviceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()("CustomerGT");
 
-                var response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService);
+                HttpResponseMessage? response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService, Enum.Parse<Service>(serviceToReplicate));
 
-                Console.WriteLine($"Replicate customer with ID: {repCustomerId} from SubiektGT --- Status code: {(int)response.StatusCode} ({response.StatusCode})");
+                if (response == null)
+                {
+                    Console.WriteLine($"Adding failed. Customer with ID: {repCustomerId} already exists in the database.");
+                    return;
+                }
+                else 
+                { 
+                    Console.WriteLine($"Replicate customer with ID: {repCustomerId} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
 
-                if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
+                    if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
+                }
             }
 
             if (shCustomerId > 0)
             {
-                Console.WriteLine($"Show customer with ID: {shCustomerId} from SubiektGT");
+                if (string.IsNullOrEmpty(serviceToReplicate))
+                {
+                    Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
+                    return;
+                }
+
+                Console.WriteLine($"Show customer with ID: {shCustomerId}.");
 
                 ICustomerSourceData customerDataSourceService = serviceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()("CustomerGT");
 
@@ -105,7 +136,7 @@ internal partial class Program
                         Console.WriteLine($"Response: {customer.ToString()}");
             }
 
-        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption);
+        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate);
 
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
