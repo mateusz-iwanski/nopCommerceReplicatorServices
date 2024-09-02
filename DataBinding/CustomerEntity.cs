@@ -12,7 +12,7 @@ namespace nopCommerceReplicatorServices.DataBinding
     /// When adding a new customer to nopCommerce - adding a new KeyBinding object to the database.
     /// When you update a client in nopCommerce - look for the ServiceKey, read the NopCommerceId and update it
     /// </remarks>
-    public class Customer
+    public class CustomerDataBinding
     {
         public int Id { get; set; }
 
