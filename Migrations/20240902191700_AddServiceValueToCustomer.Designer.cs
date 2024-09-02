@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using nopCommerceReplicatorServices.DataBinding;
 
@@ -10,9 +11,11 @@ using nopCommerceReplicatorServices.DataBinding;
 namespace nopCommerceReplicatorServices.Migrations
 {
     [DbContext(typeof(KeyBindingDbContext))]
-    partial class KeyBindingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240902191700_AddServiceValueToCustomer")]
+    partial class AddServiceValueToCustomer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
