@@ -12,7 +12,7 @@ namespace nopCommerceReplicatorServices.DataBinding
     {
         private string _connectionString { get; set; }  
 
-        public DbSet<Customer> Customers { get; set; }
+        public DbSet<CustomerDataBinding> Customers { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
