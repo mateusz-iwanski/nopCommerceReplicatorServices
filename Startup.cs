@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceReplicatorServices.SubiektGT;
@@ -18,11 +19,15 @@ namespace nopCommerceReplicatorServices
         /// </summary>
         public void ConfigureServices(IServiceCollection services)
         {
-            // Register services with keys
+            services.AddDbContext<KeyBindingDbContext>();
+
             services.AddScoped<CustomerNopCommerce>();
             services.AddScoped<CustomerGT>();
+            services.AddScoped<nopCommerceReplicatorServices.DataBinding.DataBinding>();
 
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
+
+            
 
             // nopCommerce services
             services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
