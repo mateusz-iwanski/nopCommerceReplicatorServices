@@ -19,8 +19,11 @@ namespace nopCommerceReplicatorServices.DataBinding
         // for ex. SubiektGT, Django, etc.
         public string ServiceName { get; set; }
 
-        // customer id, customer symbol, etc. (unique with ServiceName)
+        // for ex. customer, product, etc.  
         public string ServiceKey { get; set; }
+
+        // customer id, customer symbol, etc. (unique with ServiceName)
+        public string ServiceValue { get; set; }
 
         // nopCommerce customer id
         public int NopCommerceId { get; set; }  
