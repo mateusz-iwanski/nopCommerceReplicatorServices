@@ -16,7 +16,7 @@ namespace nopCommerceReplicatorServices.DataBinding
             _serviceProvider = serviceProvider;
         }
 
-        public void AddKeyBinding(int nopCommerceCustomerId, string serviceName, string serviceKey)
+        public void AddKeyBinding(int nopCommerceCustomerId, string serviceName, string serviceKey, string serviceValue)
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -26,7 +26,8 @@ namespace nopCommerceReplicatorServices.DataBinding
                 {
                     NopCommerceId = nopCommerceCustomerId,
                     ServiceName = serviceName,
-                    ServiceKey = serviceKey
+                    ServiceKey = serviceKey,
+                    ServiceValue = serviceValue
                 };
 
                 dbContext.Customers.Add(customerKeyBinding);
@@ -34,13 +35,17 @@ namespace nopCommerceReplicatorServices.DataBinding
             }
         }
 
-        public CustomerDataBinding? GetKeyBinding(Service serviceName, string serviceKey)
+        public CustomerDataBinding? GetKeyBinding(Service serviceName, string serviceKey, string serviceValue)
         {
             using (var scope = _serviceProvider.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<KeyBindingDbContext>();
 
-                return dbContext.Customers.FirstOrDefault(x => x.ServiceName == serviceName.ToString() && x.ServiceKey == serviceKey);
+                return dbContext.Customers.FirstOrDefault(x =>
+                    x.ServiceName == serviceName.ToString() &&
+                    x.ServiceKey == serviceKey &&
+                    x.ServiceValue == serviceValue
+                );
             }
         }
     }
