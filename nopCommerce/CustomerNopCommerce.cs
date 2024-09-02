@@ -22,6 +22,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// </summary>
     public class CustomerNopCommerce : ICustomer
     {
+        public string ServiceKeyName { get { return "Customer"; } }
+
         private ICustomerService _customerApi { get; set; }
         private readonly IServiceProvider _serviceProvider;
 
@@ -41,6 +43,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="customerId">The client ID of the external service</param>
         /// <param name="customerGate">External service with customer source data</param>
         /// <param name="setService">The service used for replication</param>
+        /// <returns>Null when client added previously, HttpResponseMessage when client added</returns>
         [DeserializeResponse]
         public async Task<HttpResponseMessage>? CreatePL(int customerId, ICustomerSourceData customerGate, Service setService)
         {
@@ -50,7 +53,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
             {
                 var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
 
-                if (dataBindingService.GetKeyBinding(setService, customerId.ToString()) == null)
+                if (dataBindingService.GetKeyBinding(setService, ServiceKeyName, customerId.ToString()) == null)
                 {
                     HttpResponseMessage? response = await _customerApi.CreatePLAsync(customerFromGate.FirstOrDefault());
 
@@ -59,7 +62,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                         var customerDtoString = await response.Content.ReadAsStringAsync();
                         var customerDto = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
 
-                        dataBindingService.AddKeyBinding(Int32.Parse(customerDto.Id), setService.ToString(), customerId.ToString());
+                        dataBindingService.AddKeyBinding(Int32.Parse(customerDto.Id), setService.ToString(), ServiceKeyName, customerId.ToString());
                     }
 
                     return response;
