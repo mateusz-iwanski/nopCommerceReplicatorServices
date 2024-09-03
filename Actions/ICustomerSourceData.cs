@@ -9,6 +9,7 @@ namespace nopCommerceReplicatorServices.Services
 {
     public interface ICustomerSourceData
     {
-        IEnumerable<CustomerCreatePLDto>? Get(string fieldName, object fieldValue);
+        IEnumerable<CustomerDto>? Get(string fieldName, object fieldValue);
+        CustomerDto? GetById(int customerId);
     }
 }
