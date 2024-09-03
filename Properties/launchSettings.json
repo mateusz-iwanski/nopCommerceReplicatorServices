@@ -1,7 +1,8 @@
 {
   "profiles": {
     "nopCommerceReplicatorServices": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--replicate_service SubiektGT --replicate_subiekt_gt_customerId 38"
     }
   }
 }

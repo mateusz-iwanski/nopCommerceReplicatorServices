@@ -32,6 +32,8 @@ internal partial class Program
         var host = CreateHostBuilder(args).Build();
         var serviceProvider = host.Services;
 
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
         // Define the command-line options
         var repCustomerIdOption = new Option<int>(
             "--replicate_subiekt_gt_customerId",
@@ -76,6 +78,7 @@ internal partial class Program
         {
             Service service;
 
+            // if an external service is selected, check if it exists in the list of enum services
             if (!string.IsNullOrEmpty(serviceToReplicate))
             {
                 if (!Enum.TryParse<Service>(serviceToReplicate, out service))
@@ -85,38 +88,49 @@ internal partial class Program
                 }
             }
 
+            // show help
             if (help)
             {
                 rootCommand.Invoke("-h");
                 return;
             }
 
+            // show from external service customer data
+            // service has to be marked
             if (repCustomerId > 0)
-            {                     
+            {                
                 if (string.IsNullOrEmpty(serviceToReplicate))
                 {
                     Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
                     return;
                 }
 
-                ICustomer customerNopCommerceService = serviceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
-                ICustomerSourceData customerDataSourceService = serviceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()("CustomerGT");
-
-                HttpResponseMessage? response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService, Enum.Parse<Service>(serviceToReplicate));
-
-                if (response == null)
+                using (var scope = serviceProvider.CreateScope())
                 {
-                    Console.WriteLine($"Adding failed. Customer with ID: {repCustomerId} already exists in the database.");
-                    return;
-                }
-                else 
-                { 
-                    Console.WriteLine($"Replicate customer with ID: {repCustomerId} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
+                    // get customer service which is marked for replication
+                    var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer");
 
-                    if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
+                    ICustomer customerNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
+                    ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);                    
+
+                    HttpResponseMessage? response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+
+                    if (response == null)
+                    {
+                        Console.WriteLine($"Adding failed. Customer with ID: {repCustomerId} already exists in the database.");
+                        return;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Replicate customer with ID: {repCustomerId} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
+
+                        if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
+                    }
                 }
             }
 
+            // show from external service customer data
+            // service has to be marked
             if (shCustomerId > 0)
             {
                 if (string.IsNullOrEmpty(serviceToReplicate))
@@ -127,13 +141,18 @@ internal partial class Program
 
                 Console.WriteLine($"Show customer with ID: {shCustomerId}.");
 
-                ICustomerSourceData customerDataSourceService = serviceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()("CustomerGT");
+                // get customer service which is marked for replication
+                var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer");
 
-                var response = customerDataSourceService.Get("kH_Id", shCustomerId);
+                using (var scope = serviceProvider.CreateScope())
+                {
+                    ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);
 
-                if (response!=null)
-                    foreach (var customer in response)
-                        Console.WriteLine($"Response: {customer.ToString()}");
+                    var customerDto = customerDataSourceService.GetById(shCustomerId);
+
+                    if (customerDto != null)
+                        Console.WriteLine($"Response: {customerDto.ToString()}");
+                }                
             }
 
         }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate);
