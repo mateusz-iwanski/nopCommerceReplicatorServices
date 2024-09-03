@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.Services;
@@ -19,7 +20,16 @@ namespace nopCommerceReplicatorServices
         /// </summary>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<KeyBindingDbContext>();
+
+            services.AddSingleton<IConfiguration>((ConfigurationBuilder) =>
+            {
+                return new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("settings.json", optional: false, reloadOnChange: true)
+                    .Build();
+            });
+
+            services.AddDbContext<KeyBindingDbContext>();            
 
             services.AddScoped<CustomerNopCommerce>();
             services.AddScoped<CustomerGT>();
