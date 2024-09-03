@@ -39,15 +39,20 @@ namespace nopCommerceReplicatorServices.SubiektGT
             return;
         }
 
+        public CustomerDto? GetById(int customerId)
+        {
+            return Get("kH_Id", customerId.ToString())?.FirstOrDefault();
+        }   
+
         /// <summary>
         /// Gets a customer by a specified field and value.
         /// </summary>
         /// <param name="fieldName">The field name to query by.</param>
         /// <param name="fieldValue">The field value to query by.</param>
         /// <returns>A CustomerCreatePLDto object if found; otherwise, null.</returns>
-        public IEnumerable<CustomerCreatePLDto>? Get(string fieldName, object fieldValue)
+        public IEnumerable<CustomerDto>? Get(string fieldName, object fieldValue)
         {
-            List<CustomerCreatePLDto> products = new List<CustomerCreatePLDto>();
+            List<CustomerDto> products = new List<CustomerDto>();
 
             var query = @$"
                 SELECT
@@ -80,15 +85,16 @@ namespace nopCommerceReplicatorServices.SubiektGT
                     }
                     else
                     {                        
-                        var product = new CustomerCreatePLDto
+                        var product = new CustomerDto
                         {
+                            Id = reader.GetInt32(reader.GetOrdinal("kH_Id")),
                             City = reader.IsDBNull("adr_Miejscowosc") ? null : reader.GetString(reader.GetOrdinal("adr_Miejscowosc")),
                             Company = reader.IsDBNull("adr_NIP") ? null : reader.GetString(reader.GetOrdinal("adr_NIP")),
                             County = reader.IsDBNull("woj_nazwa") ? null : reader.GetString(reader.GetOrdinal("woj_nazwa")),
                             Email = reader.GetString(reader.GetOrdinal("kh_email")),
                             FirstName = reader.IsDBNull("kh_Imie") ? null : reader.GetString(reader.GetOrdinal("kh_Imie")),
                             LastName = reader.IsDBNull("kh_Nazwisko") ? null : reader.GetString(reader.GetOrdinal("kh_Nazwisko")),
-                            Password = reader.GetString(reader.GetOrdinal("kh_email")),  // default password is email
+                            //Password = reader.GetString(reader.GetOrdinal("kh_email")),  // default password is email
                             Phone = reader.IsDBNull("adr_Telefon") ? null : reader.GetString(reader.GetOrdinal("adr_Telefon")),
                             StreetAddress = reader.IsDBNull("adr_Adres") ? null : reader.GetString(reader.GetOrdinal("adr_Adres")),
                             StreetAddress2 = null,
