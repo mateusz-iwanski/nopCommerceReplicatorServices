@@ -47,7 +47,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         [DeserializeResponse]
         public async Task<HttpResponseMessage>? CreatePL(int customerId, ICustomerSourceData customerGate, Service setService)
         {
-            IEnumerable<CustomerCreatePLDto>? customerFromGate = customerGate.Get("kH_Id", customerId.ToString()) ?? throw new Exception($"Customer does not exist in the source data");
+            IEnumerable<CustomerDto>? customerFromGate = customerGate.Get("kH_Id", customerId.ToString()) ?? throw new Exception($"Customer does not exist in the source data");
 
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -55,14 +55,33 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
                 if (dataBindingService.GetKeyBinding(setService, ServiceKeyName, customerId.ToString()) == null)
                 {
-                    HttpResponseMessage? response = await _customerApi.CreatePLAsync(customerFromGate.FirstOrDefault());
+
+                    var customerDto = customerFromGate.FirstOrDefault();
+
+                    CustomerCreatePLDto customerCreatePLDto = new CustomerCreatePLDto
+                    {
+                        City = customerDto.City,
+                        Company = customerDto.Company,
+                        County = customerDto.County,
+                        Email = customerDto.Email,
+                        FirstName = customerDto.FirstName,
+                        LastName = customerDto.LastName,
+                        Password = customerDto.Email,  // default password is email
+                        Phone = customerDto.Phone,
+                        StreetAddress = customerDto.StreetAddress,
+                        StreetAddress2 = null,
+                        Username = customerDto.Email, // default username is email
+                        ZipPostalCode = customerDto.ZipPostalCode
+                    };
+
+                    HttpResponseMessage? response = await _customerApi.CreatePLAsync(customerCreatePLDto);
 
                     if (response.IsSuccessStatusCode)
                     {
                         var customerDtoString = await response.Content.ReadAsStringAsync();
-                        var customerDto = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
+                        var newCustomerDtoFromResponse = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
 
-                        dataBindingService.AddKeyBinding(Int32.Parse(customerDto.Id), setService.ToString(), ServiceKeyName, customerId.ToString());
+                        dataBindingService.AddKeyBinding(newCustomerDtoFromResponse.Id, setService.ToString(), ServiceKeyName, customerId.ToString());
                     }
 
                     return response;
