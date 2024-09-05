@@ -36,13 +36,13 @@ internal partial class Program
 
         // Define the command-line options
         var repCustomerIdOption = new Option<int>(
-            "--replicate_subiekt_gt_customerId",
-            "The customer ID in Subiekt GT that is to be replicated. If not exists add, if exists update."
+            "--replicate_customer",
+            "The client ID from external replicated services to be replicated."
         );
 
         var shCustomerIdOption = new Option<int>(
-            "--show_service_customerId",
-            "The customer ID in Subiekt GT that is to be show"
+            "--show_service_customer",
+            "The customer ID from external service that is to be show."
         );
 
         // Create a help option
@@ -58,8 +58,8 @@ internal partial class Program
         );
 
         var serviceToReplicate = new Option<string>(
-            "--replicate_service",
-            $"Set sercice to replicate. Available services - {string.Join(',', Enum.GetNames(typeof(Service)))}"
+            "--external_service",
+            $"Set external service to use. Available services - {string.Join(',', Enum.GetNames(typeof(Service)))}"
         );
 
         // Create a root command with the defined options
@@ -72,7 +72,7 @@ internal partial class Program
             showDetailsOption
         };
 
-        rootCommand.Description = "nopCommerce Replicator Services";
+        rootCommand.Description = "nopCommerce Replicator Service";
 
         rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate) =>
         {
@@ -95,7 +95,7 @@ internal partial class Program
                 return;
             }
 
-            // show from external service customer data
+            // replicate customer data from external service
             // service has to be marked
             if (repCustomerId > 0)
             {                
