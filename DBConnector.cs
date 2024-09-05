@@ -1,25 +1,27 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System;
-using System.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using System.Data.Common;
 using System.IO;
+using Npgsql; // For PostgreSQL
+using System.Data.SqlClient; // For MSSQL
 
 namespace nopCommerceReplicatorServices
 {
     /// <summary>
-    /// <c>DBConnector</c> is a class that provides a connection to the database.
+    /// <c>DBConnector</c> is a class that provides a connection to SQL the database.
     /// </summary>
     public class DBConnector
     {
         private readonly string _connectionString;
-        public SqlConnection _connection { get; private set; }
+        private readonly string _dbType;
+        public DbConnection _connection { get; private set; }
 
-        public DBConnector(string connectionStringFromSettings)
+        /// <summary>
+        /// Constructor for DBConnector 
+        /// </summary>
+        /// <param name="connectionStringFromSettings">read from settings</param>
+        /// <param name="dbType">mssql, postgresql</param>
+        public DBConnector(string connectionStringFromSettings, string dbType)
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -27,30 +29,47 @@ namespace nopCommerceReplicatorServices
                 .Build();
 
             _connectionString = configuration.GetSection("DbConnectionStrings").GetValue<string>(connectionStringFromSettings);
+            _dbType = dbType;
 
             if (string.IsNullOrEmpty(_connectionString))
             {
                 throw new InvalidOperationException("The connection string has not been initialized.");
             }
+
+            if (string.IsNullOrEmpty(_dbType))
+            {
+                throw new InvalidOperationException("The database type has not been specified.");
+            }
         }
 
         public void Initialize()
         {
-            _connection = new SqlConnection(_connectionString);
+            _connection = CreateConnection(_dbType, _connectionString);
+        }
+
+        private DbConnection CreateConnection(string dbType, string connectionString)
+        {
+            return dbType.ToLower() switch
+            {
+                "mssql" => new SqlConnection(connectionString),
+                "postgresql" => new NpgsqlConnection(connectionString),
+                _ => throw new InvalidOperationException("Unsupported database type.")
+            };
         }
 
         public void OpenConnection()
         {
             if (_connection == null)
-                throw new Exception("DBConnector has no initialize connection. Use Initialize() before OpenConnection()");
+                throw new Exception("DBConnector has no initialized connection. Use Initialize() before OpenConnection()");
             _connection.Open();
         }
 
-        public void ExecuteQuery(string query, Action<SqlDataReader> work)
+        public void ExecuteQuery(string query, Action<DbDataReader> work)
         {
-            using (SqlCommand command = new SqlCommand(query, _connection))
+            using (DbCommand command = _connection.CreateCommand())
             {
-                using (SqlDataReader reader = command.ExecuteReader())
+                command.CommandText = query;
+                using (DbDataReader reader = command.ExecuteReader())
                 {
                     work(reader);
                 }
@@ -59,8 +78,9 @@ namespace nopCommerceReplicatorServices
 
         public void ExecuteNonQuery(string query)
         {
-            using (SqlCommand command = new SqlCommand(query, _connection))
+            using (DbCommand command = _connection.CreateCommand())
             {
+                command.CommandText = query;
                 command.ExecuteNonQuery();
             }
         }
