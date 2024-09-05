@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.DataBinding;
+using nopCommerceReplicatorServices.Django;
 using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceReplicatorServices.SubiektGT;
@@ -33,6 +34,7 @@ namespace nopCommerceReplicatorServices
 
             services.AddScoped<CustomerNopCommerce>();
             services.AddScoped<CustomerGT>();
+            services.AddScoped<CustomerDjango>();
             services.AddScoped<nopCommerceReplicatorServices.DataBinding.DataBinding>();
 
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
@@ -55,6 +57,7 @@ namespace nopCommerceReplicatorServices
                 return key switch
                 {
                     "CustomerGT" => serviceProvider.GetService<CustomerGT>() as ICustomerSourceData,
+                    "CustomerDjango" => serviceProvider.GetService<CustomerDjango>() as ICustomerSourceData,
                     _ => throw new ArgumentException($"Unknown key: {key}")
                 };
             });
