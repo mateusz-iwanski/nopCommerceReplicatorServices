@@ -24,6 +24,8 @@ using nopCommerceWebApiClient.Objects.Customer;
 using nopCommerceReplicatorServices.nopCommerce;
 using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
+using nopCommerceReplicatorServices.Actions;
 
 internal partial class Program
 {
@@ -43,6 +45,11 @@ internal partial class Program
         var shCustomerIdOption = new Option<int>(
             "--show_service_customer",
             "The customer ID from external service that is to be show."
+        );
+
+        var shProductIdOption = new Option<int>(
+            "--show_service_product",
+            "The product ID from external service that is to be show."
         );
 
         // Create a help option
@@ -68,13 +75,14 @@ internal partial class Program
             serviceToReplicate,
             repCustomerIdOption,
             shCustomerIdOption,
+            shProductIdOption,
             helpOption,
             showDetailsOption
         };
 
         rootCommand.Description = "nopCommerce Replicator Service";
 
-        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate) =>
+        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate, int shProductIdOption) =>
         {
             Service service;
 
@@ -155,7 +163,29 @@ internal partial class Program
                 }                
             }
 
-        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate);
+            if(shProductIdOption > 0)
+            {
+                if (string.IsNullOrEmpty(serviceToReplicate))
+                {
+                    Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
+                    return;
+                }
+
+                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+
+                using (var scope = serviceProvider.CreateScope())
+                {
+                    IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
+
+                    var productDto = productDataSourceService.GetById(shProductIdOption);
+
+                    if (productDto != null)
+                        Console.WriteLine($"Response: {productDto.ToString()}");
+                }
+            }
+
+
+        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate, shProductIdOption);
 
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
