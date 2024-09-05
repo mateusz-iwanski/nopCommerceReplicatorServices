@@ -34,7 +34,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
 
         public CustomerGT()
         {
-            dbConnector = new DBConnector("SubiektGTConnection");
+            dbConnector = new DBConnector("SubiektGTConnection", "mssql");
             dbConnector.Initialize();
             return;
         }
@@ -94,7 +94,6 @@ namespace nopCommerceReplicatorServices.SubiektGT
                             Email = reader.GetString(reader.GetOrdinal("kh_email")),
                             FirstName = reader.IsDBNull("kh_Imie") ? null : reader.GetString(reader.GetOrdinal("kh_Imie")),
                             LastName = reader.IsDBNull("kh_Nazwisko") ? null : reader.GetString(reader.GetOrdinal("kh_Nazwisko")),
-                            //Password = reader.GetString(reader.GetOrdinal("kh_email")),  // default password is email
                             Phone = reader.IsDBNull("adr_Telefon") ? null : reader.GetString(reader.GetOrdinal("adr_Telefon")),
                             StreetAddress = reader.IsDBNull("adr_Adres") ? null : reader.GetString(reader.GetOrdinal("adr_Adres")),
                             StreetAddress2 = null,
