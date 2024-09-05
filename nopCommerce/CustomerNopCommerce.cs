@@ -38,7 +38,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// </summary>
         /// <remarks>
         /// Add only if not previously added.
-        /// The default password is e-mail.
+        /// The default password is random guid.
         /// </remarks>
         /// <param name="customerId">The client ID of the external service</param>
         /// <param name="customerGate">External service with customer source data</param>
@@ -47,17 +47,15 @@ namespace nopCommerceReplicatorServices.nopCommerce
         [DeserializeResponse]
         public async Task<HttpResponseMessage>? CreatePL(int customerId, ICustomerSourceData customerGate, Service setService)
         {
-            IEnumerable<CustomerDto>? customerFromGate = customerGate.Get("kH_Id", customerId.ToString()) ?? throw new Exception($"Customer does not exist in the source data");
+            CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new Exception($"Customer does not exist in the source data");
 
             using (var scope = _serviceProvider.CreateScope())
             {
                 var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
+                var randomPassword = Guid.NewGuid().ToString();
 
                 if (dataBindingService.GetKeyBinding(setService, ServiceKeyName, customerId.ToString()) == null)
                 {
-
-                    var customerDto = customerFromGate.FirstOrDefault();
-
                     CustomerCreatePLDto customerCreatePLDto = new CustomerCreatePLDto
                     {
                         City = customerDto.City,
@@ -66,7 +64,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                         Email = customerDto.Email,
                         FirstName = customerDto.FirstName,
                         LastName = customerDto.LastName,
-                        Password = customerDto.Email,  // default password is email
+                        Password = randomPassword, 
                         Phone = customerDto.Phone,
                         StreetAddress = customerDto.StreetAddress,
                         StreetAddress2 = null,
