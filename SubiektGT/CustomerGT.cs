@@ -52,7 +52,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
         /// <returns>A CustomerCreatePLDto object if found; otherwise, null.</returns>
         public IEnumerable<CustomerDto>? Get(string fieldName, object fieldValue)
         {
-            List<CustomerDto> products = new List<CustomerDto>();
+            List<CustomerDto> customers = new List<CustomerDto>();
 
             var query = @$"
                 SELECT
@@ -85,7 +85,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
                     }
                     else
                     {                        
-                        var product = new CustomerDto
+                        var customer = new CustomerDto
                         {
                             Id = reader.GetInt32(reader.GetOrdinal("kH_Id")),
                             City = reader.IsDBNull("adr_Miejscowosc") ? null : reader.GetString(reader.GetOrdinal("adr_Miejscowosc")),
@@ -101,7 +101,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
                             ZipPostalCode = reader.IsDBNull("adr_Kod") ? null : reader.GetString(reader.GetOrdinal("adr_Kod")),
                         };
 
-                        products.Add(product);
+                        customers.Add(customer);
                     }
 
                 }
@@ -109,7 +109,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
 
             dbConnector.CloseConnection();
 
-            return products.Count > 0 ? products : null;
+            return customers.Count > 0 ? customers : null;
         }
 
     }
