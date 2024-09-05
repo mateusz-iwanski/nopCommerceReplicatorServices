@@ -9,5 +9,6 @@ namespace nopCommerceReplicatorServices
     public enum Service
     {
         SubiektGT,
+        Django,
     }
 }
