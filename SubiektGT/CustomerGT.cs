@@ -42,14 +42,14 @@ namespace nopCommerceReplicatorServices.SubiektGT
         public CustomerDto? GetById(int customerId)
         {
             return Get("kH_Id", customerId.ToString())?.FirstOrDefault();
-        }   
+        }
 
         /// <summary>
         /// Gets a customer by a specified field and value.
         /// </summary>
         /// <param name="fieldName">The field name to query by.</param>
         /// <param name="fieldValue">The field value to query by.</param>
-        /// <returns>A CustomerCreatePLDto object if found; otherwise, null.</returns>
+        /// <returns>A CustomerDto object if found; otherwise, null.</returns>
         public IEnumerable<CustomerDto>? Get(string fieldName, object fieldValue)
         {
             List<CustomerDto> customers = new List<CustomerDto>();
