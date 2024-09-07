@@ -1,4 +1,5 @@
-﻿using nopCommerceWebApiClient.Objects.Customer;
+﻿using NLog.Targets;
+using nopCommerceWebApiClient.Objects.Customer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,9 +8,12 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.Services
 {
+    /// <summary>
+    /// This interface is used to implement customer actions for target data (e.g. CustomerNopCommerce).
+    /// </summary>
     public interface ICustomer
     {
-        string ServiceKeyName { get; } // e.g. "Customer"
-        Task<HttpResponseMessage>? CreatePL(int customerId, ICustomerSourceData customerGate, Service setService);
+        string ServiceKeyName => "Customer";
+        Task<HttpResponseMessage>? CreatePLAsync(int customerId, ICustomerSourceData customerGate, Service setService);
     }
 }
