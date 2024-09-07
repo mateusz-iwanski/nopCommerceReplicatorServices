@@ -51,7 +51,7 @@ namespace nopCommerceReplicatorServices
 
             
 
-            // nopCommerce services
+            // nopCommerce customer services
             services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
             {
                 return key switch
@@ -61,7 +61,18 @@ namespace nopCommerceReplicatorServices
                 };
             });
 
-            // source services
+            // nopCommerce product services
+            services.AddScoped<Func<string, IProduct>>(serviceProvider => key =>
+            {
+                return key switch
+                {
+                    "ProductNopCommerce" => serviceProvider.GetService<ProductNopCommerce>() as IProduct,
+                    _ => throw new ArgumentException($"Unknown key: {key}")
+                };
+            });
+
+
+            // source customer services
             services.AddScoped<Func<string, ICustomerSourceData>>(serviceProvider => key =>
             {
                 return key switch
@@ -72,6 +83,7 @@ namespace nopCommerceReplicatorServices
                 };
             });
 
+            // source product services
             services.AddScoped<Func<string, IProductSourceData>>(serviceProvider => key =>
             {
                 return key switch
