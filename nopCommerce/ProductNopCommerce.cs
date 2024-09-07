@@ -13,6 +13,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
 {
     internal class ProductNopCommerce : IProduct
     {
+        public string ServiceKeyName => ((IProduct)this).ServiceKeyName;
+
         private IProductService _productApi { get; set; }
         private readonly IServiceProvider _serviceProvider;
 
@@ -22,8 +24,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
             _serviceProvider = serviceProvider;
         }
 
-        [DeserializeResponse]
-        public async Task<ProductDto?> GetProductById(int productId)
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<ProductDto?> GetProductByIdAsync(int productId)
         {
             return await _productApi.GetByIdAsync(productId);
         }

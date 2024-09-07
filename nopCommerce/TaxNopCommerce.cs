@@ -17,7 +17,7 @@ using nopCommerceWebApiClient.Helpers;
 namespace nopCommerceReplicatorServices.nopCommerce
 {
     internal class TaxNopCommerce : ITax
-    {
+    {        
         private ITaxCategoryService _taxCategoryService { get; set; }
 
         public TaxNopCommerce(IApiConfigurationServices apiServices)
@@ -25,7 +25,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
             _taxCategoryService = apiServices.TaxCategoryService;
         }
 
-        public async Task<int> GetCategoryByPercentageAsync(VatLevel percentage)
+        public async Task<int> GetCategoryByNameAsync(VatLevel percentage)
         {
             var taxCategory = await _taxCategoryService.GetByName(percentage.ToString());
             return taxCategory.Id;
