@@ -13,7 +13,7 @@ namespace nopCommerceReplicatorServices.Services
     /// </summary>
     public interface ICustomer
     {
-        string ServiceKeyName => "Customer";
+        string ServiceKeyName { get; }
         Task<HttpResponseMessage>? CreatePLAsync(int customerId, ICustomerSourceData customerGate, Service setService);
     }
 }
