@@ -9,9 +9,11 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.Actions
 {
-    internal interface IProductSourceData
-    {
-        Task<IEnumerable<ProductDto>>? Get(string fieldName, object fieldValue, PriceLevelGT priceLevel);
-        Task<ProductDto>? GetById(int customerId);
+    /// <summary>
+    /// This interface is used to implement product actions for external services with source data (e.g. ProductGt).
+    /// </summary>
+    public interface IProductSourceData
+    {        
+        Task<ProductCreateMinimalDto>? GetById(int customerId);        
     }
 }
