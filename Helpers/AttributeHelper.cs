@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 public static class AttributeHelper
 {
     /// <summary>
-    /// <c>DeserializeResponseAsync</c> is used to deserialize responses from the API
+    /// <c>DeserializeWebApiNopCommerceResponseAsync</c> is used to deserialize responses from the API
     /// <example>
     /// <code>
     /// [DeserializeResponse]
@@ -19,18 +19,18 @@ public static class AttributeHelper
     /// ...
     /// var response = await customerService.CreatePLById(customerId);
     /// var methodInfo = typeof(CustomerGT).GetMethod("CreatePLById");
-    /// await AttributeHelper.DeserializeResponseAsync(methodInfo, response);
+    /// await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync(methodInfo, response);
     /// </code>
     /// </example>
     /// </summary>
     /// <remarks>
     /// Useful for displaying process details and errors to the client
     /// </remarks>
-    public static async Task DeserializeResponseAsync(string methodName, HttpResponseMessage response)
+    public static async Task DeserializeWebApiNopCommerceResponseAsync<T>(string methodName, HttpResponseMessage response)
     {
-        var method = typeof(CustomerNopCommerce).GetMethod(methodName);
+        var method = typeof(ProductNopCommerce).GetMethod(methodName);
 
-        if (method.GetCustomAttribute<DeserializeResponseAttribute>() != null)
+        if (method.GetCustomAttribute<DeserializeWebApiNopCommerceResponseAttribute>() != null)
         {
             var url = response.RequestMessage.RequestUri.ToString();
 
