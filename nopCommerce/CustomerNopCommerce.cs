@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
+using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceWebApiClient;
@@ -22,7 +23,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// </summary>
     public class CustomerNopCommerce : ICustomer
     {
-        public string ServiceKeyName { get { return "Customer"; } }
+        public string ServiceKeyName => ((ICustomer)this).ServiceKeyName;
 
         private ICustomerService _customerApi { get; set; }
         private readonly IServiceProvider _serviceProvider;
@@ -44,8 +45,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="customerGate">External service with customer source data</param>
         /// <param name="setService">The service used for replication</param>
         /// <returns>Null when client added previously, HttpResponseMessage when client added</returns>
-        [DeserializeResponse]
-        public async Task<HttpResponseMessage>? CreatePL(int customerId, ICustomerSourceData customerGate, Service setService)
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<HttpResponseMessage>? CreatePLAsync(int customerId, ICustomerSourceData customerGate, Service setService)
         {
             CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new Exception($"Customer does not exist in the source data");
 
@@ -89,19 +90,19 @@ namespace nopCommerceReplicatorServices.nopCommerce
             return null;
         }
 
-        [DeserializeResponse]
+        [DeserializeWebApiNopCommerceResponse]
         public async Task<IEnumerable<CustomerDto>> GetAllAsync() => await _customerApi.GetAllAsync();
 
-        [DeserializeResponse]
+        [DeserializeWebApiNopCommerceResponse]
         public async Task<CustomerDto> GetByIdAsync(int id) => await _customerApi.GetByIdAsync(id);
 
-        [DeserializeResponse]
+        [DeserializeWebApiNopCommerceResponse]
         public async Task<HttpResponseMessage> ConnectToAddressAsync(Guid customerGuid, int addressId) => await _customerApi.ConnectToAddressAsync(customerGuid, addressId);
 
-        [DeserializeResponse]
+        [DeserializeWebApiNopCommerceResponse]
         public async Task<CustomerDto> UpdatePLAsync(CustomerPLUpdateDto updateCustomerDto) => await _customerApi.UpdatePLAsync(updateCustomerDto);
 
-        [DeserializeResponse]
+        [DeserializeWebApiNopCommerceResponse]
         public async Task<HttpResponseMessage> UpdatePasswordAsync(Guid customerGuid, string newPassword) => await _customerApi.UpdatePasswordAsync(customerGuid, new Password(newPassword));
        
     }
