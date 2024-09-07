@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace nopCommerceReplicatorServices.Actions
 {
     public interface ITax
-    {
-        Task<int> GetCategoryByPercentageAsync(VatLevel percentage);
+    {        
+        Task<int> GetCategoryByNameAsync(VatLevel percentage);
     }
 }
