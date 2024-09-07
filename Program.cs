@@ -121,7 +121,7 @@ internal partial class Program
                     ICustomer customerNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
                     ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);                    
 
-                    HttpResponseMessage? response = await customerNopCommerceService.CreatePL(repCustomerId, customerDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+                    HttpResponseMessage? response = await customerNopCommerceService.CreatePLAsync(repCustomerId, customerDataSourceService, Enum.Parse<Service>(serviceToReplicate));
 
                     if (response == null)
                     {
@@ -132,12 +132,12 @@ internal partial class Program
                     {
                         Console.WriteLine($"Replicate customer with ID: {repCustomerId} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
 
-                        if (showDetailsOption) await AttributeHelper.DeserializeResponseAsync("CreatePL", response);
+                        if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<CustomerNopCommerce>("CreatePLAsync", response);
                     }
                 }
             }
 
-            // show from external service customer data
+            // show customer data from external service 
             // service has to be marked
             if (shCustomerId > 0)
             {
@@ -163,6 +163,7 @@ internal partial class Program
                 }                
             }
 
+            // show product data from external service
             if(shProductIdOption > 0)
             {
                 if (string.IsNullOrEmpty(serviceToReplicate))
@@ -177,7 +178,7 @@ internal partial class Program
                 {
                     IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
 
-                    var productDto = productDataSourceService.GetById(shProductIdOption);
+                    var productDto = await productDataSourceService.GetById(shProductIdOption);
 
                     if (productDto != null)
                         Console.WriteLine($"Response: {productDto.ToString()}");
