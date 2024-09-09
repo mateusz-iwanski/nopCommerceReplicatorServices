@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NLog.Extensions.Logging;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.Django;
@@ -29,6 +31,16 @@ namespace nopCommerceReplicatorServices
                     .SetBasePath(Directory.GetCurrentDirectory())
                     .AddJsonFile("settings.json", optional: false, reloadOnChange: true)
                     .Build();
+            });
+
+            // Add NLog as the logging provider
+            services.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.ClearProviders(); // Clear any existing logging providers
+                loggingBuilder.SetMinimumLevel(LogLevel.Trace); // Set the minimum log level
+
+                // Add NLog
+                loggingBuilder.AddNLog();
             });
 
             services.AddDbContext<KeyBindingDbContext>();            
