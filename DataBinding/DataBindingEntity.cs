@@ -6,13 +6,14 @@ using Microsoft.Extensions.Configuration;
 namespace nopCommerceReplicatorServices.DataBinding
 {
     /// <summary>
-    /// Associate a client from an external website with the nopCommerce client
+    /// Associate a data from an external website with the nopCommerce data
     /// </summary>
     /// <remarks>
+    /// For example:
     /// When adding a new customer to nopCommerce - adding a new KeyBinding object to the database.
     /// When you update a client in nopCommerce - look for the ServiceKey, read the NopCommerceId and update it
     /// </remarks>
-    public class CustomerDataBinding
+    public class DataBindingEntity
     {
         public int Id { get; set; }
 
