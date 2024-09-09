@@ -9,6 +9,6 @@ namespace nopCommerceReplicatorServices.Actions
     public interface IProduct
     {
         string ServiceKeyName { get; }
-        Task<IEnumerable<HttpResponseMessage>>? CreateWithMinimalData(int customerId, IProductSourceData productGate, Service setService);
+        Task<IEnumerable<HttpResponseMessage>>? CreateProductWithMinimalDataAsync(int customerId, IProductSourceData productGate, Service setService);
     }
 }
