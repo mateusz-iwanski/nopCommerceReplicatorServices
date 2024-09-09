@@ -31,9 +31,9 @@ namespace nopCommerceReplicatorServices.SubiektGT
         //[DeserializeResponse]
         //public Task<HttpResponseMessage>? CreateWithMinimalData(int customerId, IProductSourceData productGate, Service setService);
 
-        public async Task<ProductCreateMinimalDto>? GetById(int customerId)
+        public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
         {
-            var products = await Get("tw_Id", customerId.ToString());
+            var products = await GetAsync("tw_Id", customerId.ToString());
             return products?.FirstOrDefault();
         }
 
@@ -44,7 +44,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
         /// <param name="fieldValue">The field value to query by.</param>
         /// <param name="priceLevels">Price levels to be shown. By default this is the retail price.</param>
         /// <returns>A ProductDto object if found; otherwise, null.</returns>
-        public async Task<IEnumerable<ProductCreateMinimalDto>>? Get(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
+        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
         {
             List<ProductCreateMinimalDto> products = new List<ProductCreateMinimalDto>();
 
