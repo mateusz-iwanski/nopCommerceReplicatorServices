@@ -1,4 +1,5 @@
-﻿using nopCommerceReplicatorServices.nopCommerce;
+﻿using Microsoft.Extensions.Logging;
+using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient.Helpers;
 using System.Diagnostics;
@@ -28,32 +29,42 @@ public static class AttributeHelper
     /// </remarks>
     public static async Task DeserializeWebApiNopCommerceResponseAsync<T>(string methodName, HttpResponseMessage response)
     {
-        var method = typeof(ProductNopCommerce).GetMethod(methodName);
+        var method = typeof(T).GetMethod(methodName);
 
         if (method.GetCustomAttribute<DeserializeWebApiNopCommerceResponseAttribute>() != null)
         {
+            var processId = Guid.NewGuid().ToString("N").Substring(0, 8);
+
             var url = response.RequestMessage.RequestUri.ToString();
 
-            Console.WriteLine($"Check request method: {method.Name}");
-            Console.WriteLine($"URL: {url}");
+            Console.WriteLine($"INFO|{processId}|Check request method: {method.Name}");
+            Console.WriteLine($"INFO|{processId}|URL: {url}");
 
             if (!response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var validationError = JsonSerializer.Deserialize<ValidationErrorResponse>(content);
 
-                Console.WriteLine($"Validation Error method: {method.Name}");
+                Console.WriteLine($"ERROR|{processId}|Validation Error method: {method.Name}");
 
                 foreach (var error in validationError.Errors)
                 {
-                    Console.WriteLine($"Validation Error key: {error.Key}");
+                    Console.WriteLine($"ERROR|{processId}|Validation Error key: {error.Key}");
 
                     foreach (var value in error.Value)
-                    { 
-                        Console.WriteLine($"Validation Error value: {value}");
+                    {
+                        Console.WriteLine($"ERROR|{processId}|Validation Error value: {value}");
                     }
                 }
             }
+        }
+    }
+
+    public static async Task DeserializeWebApiNopCommerceResponseAsync<T>(string methodName, IEnumerable<HttpResponseMessage> response)
+    {
+        foreach (var httpResponseMessage in response)
+        {
+            await DeserializeWebApiNopCommerceResponseAsync<T>(methodName, httpResponseMessage);
         }
     }
 }
