@@ -12,7 +12,7 @@ namespace nopCommerceReplicatorServices.Migrations
         {
             migrationBuilder.AddColumn<string>(
                 name: "ServiceValue",
-                table: "Customers",
+                table: "DataBinding",
                 type: "nvarchar(max)",
                 nullable: false,
                 defaultValue: "");
@@ -23,7 +23,7 @@ namespace nopCommerceReplicatorServices.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "ServiceValue",
-                table: "Customers");
+                table: "DataBinding");
         }
     }
 }

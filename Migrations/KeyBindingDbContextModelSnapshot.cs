@@ -21,7 +21,7 @@ namespace nopCommerceReplicatorServices.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("nopCommerceReplicatorServices.DataBinding.CustomerDataBinding", b =>
+            modelBuilder.Entity("nopCommerceReplicatorServices.DataBinding.DataBindingEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -46,7 +46,7 @@ namespace nopCommerceReplicatorServices.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers");
+                    b.ToTable("DataBinding", (string)null);
                 });
 #pragma warning restore 612, 618
         }

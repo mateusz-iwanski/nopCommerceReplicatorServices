@@ -49,7 +49,7 @@ namespace nopCommerceReplicatorServices.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers");
+                    b.ToTable("DataBinding");
                 });
 #pragma warning restore 612, 618
         }
