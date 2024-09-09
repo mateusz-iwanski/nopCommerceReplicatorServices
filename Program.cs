@@ -26,6 +26,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using nopCommerceReplicatorServices.Actions;
+using Microsoft.Extensions.Logging;
 
 internal partial class Program
 {
@@ -39,7 +40,7 @@ internal partial class Program
         // Define the command-line options
         var repCustomerIdOption = new Option<int>(
             "--replicate_customer",
-            "The client ID from external replicated services to be replicated."
+            "The client ID from the external service to be replicated."
         );
 
         var shCustomerIdOption = new Option<int>(
@@ -50,6 +51,11 @@ internal partial class Program
         var shProductIdOption = new Option<int>(
             "--show_service_product",
             "The product ID from external service that is to be show."
+        );
+
+        var repProductIdOption = new Option<int>(
+            "--replicate_product",
+            "The product ID from the external service to be replicated."
         );
 
         // Create a help option
@@ -71,18 +77,19 @@ internal partial class Program
 
         // Create a root command with the defined options
         var rootCommand = new RootCommand
-        {
-            serviceToReplicate,
-            repCustomerIdOption,
-            shCustomerIdOption,
-            shProductIdOption,
-            helpOption,
-            showDetailsOption
-        };
+                {
+                    serviceToReplicate,
+                    repCustomerIdOption,
+                    shCustomerIdOption,
+                    shProductIdOption,
+                    repProductIdOption,
+                    helpOption,
+                    showDetailsOption
+                };
 
         rootCommand.Description = "nopCommerce Replicator Service";
 
-        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate, int shProductIdOption) =>
+        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate, int shProductIdOption, int repProductIdOption) =>
         {
             Service service;
 
@@ -106,7 +113,7 @@ internal partial class Program
             // replicate customer data from external service
             // service has to be marked
             if (repCustomerId > 0)
-            {                
+            {
                 if (string.IsNullOrEmpty(serviceToReplicate))
                 {
                     Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
@@ -119,7 +126,7 @@ internal partial class Program
                     var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer");
 
                     ICustomer customerNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
-                    ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);                    
+                    ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);
 
                     HttpResponseMessage? response = await customerNopCommerceService.CreatePLAsync(repCustomerId, customerDataSourceService, Enum.Parse<Service>(serviceToReplicate));
 
@@ -160,11 +167,11 @@ internal partial class Program
 
                     if (customerDto != null)
                         Console.WriteLine($"Response: {customerDto.ToString()}");
-                }                
+                }
             }
 
             // show product data from external service
-            if(shProductIdOption > 0)
+            if (shProductIdOption > 0)
             {
                 if (string.IsNullOrEmpty(serviceToReplicate))
                 {
@@ -178,15 +185,51 @@ internal partial class Program
                 {
                     IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
 
-                    var productDto = await productDataSourceService.GetById(shProductIdOption);
+                    var productDto = await productDataSourceService.GetByIdAsync(shProductIdOption);
 
                     if (productDto != null)
                         Console.WriteLine($"Response: {productDto.ToString()}");
                 }
             }
 
+            // replicate product data from external service
+            // service has to be marked
+            if (repProductIdOption > 0)
+            {
+                if (string.IsNullOrEmpty(serviceToReplicate))
+                {
+                    Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
+                    return;
+                }
 
-        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate, shProductIdOption);
+                using (var scope = serviceProvider.CreateScope())
+                {
+                    // get customer service which is marked for replication
+                    var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+
+                    IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                    IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
+
+                    IEnumerable<HttpResponseMessage>? response = await productNopCommerceService.CreateWithMinimalData(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+
+                    if (response == null)
+                    {
+                        Console.WriteLine($"Adding failed. Product with ID: {repProductIdOption} already exists in the database.");
+                        return;
+                    }
+                    else
+                    {
+                        var responseList = response.ToList();
+                        Console.WriteLine($"Replicate product with ID: {repProductIdOption} --- Status code: {(int)responseList[0].StatusCode} ({responseList[0].StatusCode}).");
+                        Console.WriteLine($"Update product Gtin with ID: {repProductIdOption} --- Status code: {(int)responseList[1].StatusCode} ({responseList[1].StatusCode}).");
+
+                        if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("CreateWithMinimalData", responseList);
+                    }
+                }
+            }
+
+
+        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate, shProductIdOption, repProductIdOption);
 
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
