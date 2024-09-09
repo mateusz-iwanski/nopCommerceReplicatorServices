@@ -58,7 +58,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="setService">The chosen service.</param>
         /// <returns>The list of HTTP response messages.</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<IEnumerable<HttpResponseMessage>>? CreateWithMinimalData(int productId, IProductSourceData productExternal, Service setService)
+        public async Task<IEnumerable<HttpResponseMessage>>? CreateProductWithMinimalDataAsync(int productId, IProductSourceData productExternal, Service setService)
         {
             ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new Exception($"Product does not exist in the source data");
 
