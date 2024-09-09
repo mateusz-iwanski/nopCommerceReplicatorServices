@@ -15,11 +15,19 @@ namespace nopCommerceReplicatorServices.DataBinding
 
         private string _connectionString { get; set; }  
 
-        public DbSet<CustomerDataBinding> Customers { get; set; }
+        public DbSet<DataBindingEntity> DataBinding { get; set; }
 
         public KeyBindingDbContext(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Change the table name
+            modelBuilder.Entity<DataBindingEntity>().ToTable("DataBinding");
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
