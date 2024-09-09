@@ -55,7 +55,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
                 var randomPassword = Guid.NewGuid().ToString();
 
-                if (dataBindingService.GetCustomerKeyBinding(setService, ServiceKeyName, customerId.ToString()) == null)
+                if (dataBindingService.GetKeyBinding(setService, ServiceKeyName, customerId.ToString()) == null)
                 {
                     CustomerCreatePLDto customerCreatePLDto = new CustomerCreatePLDto
                     {
@@ -80,7 +80,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                         var customerDtoString = await response.Content.ReadAsStringAsync();
                         var newCustomerDtoFromResponse = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
 
-                        dataBindingService.AddCustomerKeyBinding(newCustomerDtoFromResponse.Id, setService.ToString(), ServiceKeyName, customerId.ToString());
+                        dataBindingService.BindKey(newCustomerDtoFromResponse.Id, setService.ToString(), ServiceKeyName, customerId.ToString());
                     }
 
                     return response;
