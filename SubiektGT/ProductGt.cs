@@ -28,9 +28,6 @@ namespace nopCommerceReplicatorServices.SubiektGT
             return;
         }
 
-        //[DeserializeResponse]
-        //public Task<HttpResponseMessage>? CreateWithMinimalData(int customerId, IProductSourceData productGate, Service setService);
-
         public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
         {
             var products = await GetAsync("tw_Id", customerId.ToString());
