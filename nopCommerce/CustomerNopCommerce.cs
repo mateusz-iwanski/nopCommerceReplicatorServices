@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.DataBinding;
+using nopCommerceReplicatorServices.Exceptions;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Customer;
@@ -48,7 +49,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         [DeserializeWebApiNopCommerceResponse]
         public async Task<HttpResponseMessage>? CreatePLAsync(int customerId, ICustomerSourceData customerGate, Service setService)
         {
-            CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new Exception($"Customer does not exist in the source data");
+            CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new CustomException($"Customer does not exist in the source data");
 
             using (var scope = _serviceProvider.CreateScope())
             {
