@@ -2,6 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.Exceptions;
+using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Customer;
 using nopCommerceWebApiClient.Interfaces.Product;
@@ -16,34 +18,36 @@ using System.Threading.Tasks;
 namespace nopCommerceReplicatorServices.nopCommerce
 {
     /// <summary>
-    /// Represents a class that interacts with the nopCommerce product API.
+    /// Represents a class that interacts with the nopCommerce _source API.
     /// </summary>
     public class ProductNopCommerce : IProduct
     {
         /// <summary>
-        /// Gets the service key name for the product API.
+        /// Gets the service key name for the _source API.
         /// </summary>
         public string ServiceKeyName { get => "Product"; }
 
         private IProductService _productApi { get; set; }
         private readonly IServiceProvider _serviceProvider;
+        private readonly IDtoMapper _dtoMapper;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProductNopCommerce"/> class.
         /// </summary>
         /// <param name="apiServices">The API configuration services.</param>
         /// <param name="serviceProvider">The service provider.</param>
-        public ProductNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider)
+        public ProductNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider, IDtoMapper dtoMapper)
         {
             _productApi = apiServices.ProductService;
             _serviceProvider = serviceProvider;
+            _dtoMapper = dtoMapper;
         }
 
         /// <summary>
-        /// Gets a product by its ID asynchronously.
+        /// Gets a _source by its ID asynchronously.
         /// </summary>
-        /// <param name="productId">The ID of the product.</param>
-        /// <returns>The product DTO.</returns>
+        /// <param name="productId">The ID of the _source.</param>
+        /// <returns>The _source DTO.</returns>
         [DeserializeWebApiNopCommerceResponse]
         public async Task<ProductDto?> GetProductByIdAsync(int productId)
         {
@@ -51,16 +55,16 @@ namespace nopCommerceReplicatorServices.nopCommerce
         }
 
         /// <summary>
-        /// Creates a product in nopCommerce from SubiektGT with minimal data.
+        /// Creates a _source in nopCommerce from SubiektGT with minimal data.
         /// </summary>
-        /// <param name="productId">The ID of the product.</param>
-        /// <param name="productExternal">The external product source data.</param>
+        /// <param name="productId">The ID of the _source.</param>
+        /// <param name="productExternal">The external _source source data.</param>
         /// <param name="setService">The chosen service.</param>
         /// <returns>The list of HTTP response messages.</returns>
         [DeserializeWebApiNopCommerceResponse]
         public async Task<IEnumerable<HttpResponseMessage>>? CreateProductWithMinimalDataAsync(int productId, IProductSourceData productExternal, Service setService)
         {
-            ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new Exception($"Product does not exist in the source data");
+            ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new CustomException($"Product does not exist in the source data");
 
             using var scope = _serviceProvider.CreateScope();
             var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
@@ -70,7 +74,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 return null;
             }
 
-            // create product with minimal data, leave default data
+            // create _source with minimal data, leave default data
             HttpResponseMessage? response = await _productApi.CreateMinimalAsync(product);
 
             
@@ -82,38 +86,10 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 // bind data between nopCommerce and external services
                 dataBindingService.BindKey(newProductDtoFromResponse.Id, setService.ToString(), ServiceKeyName, productId.ToString());
 
-                // ProductCreateMinimalDto does not have a GTIN number, in the GT subiekt we have a GTIN number, so we update the information block in the product only with GTIN data
-                ProductUpdateBlockInformationDto updateProductInformation = new ProductUpdateBlockInformationDto
-                {
-                    Id = newProductDtoFromResponse.Id,
-                    ShortDescription = newProductDtoFromResponse.ShortDescription,
-                    FullDescription = newProductDtoFromResponse.FullDescription,
-                    ManufacturerPartNumber = newProductDtoFromResponse.ManufacturerPartNumber,
-                    Published = newProductDtoFromResponse.Published,
-                    Deleted = newProductDtoFromResponse.Deleted,
-                    Gtin = product.Gtin,
-                    ProductTypeId = newProductDtoFromResponse.ProductTypeId,
-                    ProductTemplateId = newProductDtoFromResponse.ProductTemplateId,
-                    VendorId = newProductDtoFromResponse.VendorId,
-                    RequireOtherProducts = newProductDtoFromResponse.RequireOtherProducts,
-                    RequiredProductIds = newProductDtoFromResponse.RequiredProductIds,
-                    AutomaticallyAddRequiredProducts = newProductDtoFromResponse.AutomaticallyAddRequiredProducts,
-                    ShowOnHomepage = newProductDtoFromResponse.ShowOnHomepage,
-                    DisplayOrder = newProductDtoFromResponse.DisplayOrder,
-                    ParentGroupedProductId = newProductDtoFromResponse.ParentGroupedProductId,
-                    VisibleIndividually = newProductDtoFromResponse.VisibleIndividually,
-                    SubjectToAcl = newProductDtoFromResponse.SubjectToAcl,
-                    LimitedToStores = newProductDtoFromResponse.LimitedToStores,
-                    AvailableStartDateTimeUtc = newProductDtoFromResponse.AvailableStartDateTimeUtc,
-                    AvailableEndDateTimeUtc = newProductDtoFromResponse.AvailableEndDateTimeUtc,
-                    MarkAsNew = newProductDtoFromResponse.MarkAsNew,
-                    MarkAsNewStartDateTimeUtc = newProductDtoFromResponse.MarkAsNewStartDateTimeUtc,
-                    MarkAsNewEndDateTimeUtc = newProductDtoFromResponse.MarkAsNewEndDateTimeUtc,
-                    AdminComment = newProductDtoFromResponse.AdminComment,
-                    UpdatedOnUtc = newProductDtoFromResponse.UpdatedOnUtc
-                };
+                // update block information with Gtin
+                var producInrmationBlockDto = _dtoMapper.Map<ProductUpdateBlockInformationDto, ProductDto>(newProductDtoFromResponse, new Dictionary<string, object> { { "Gtin", product.Gtin } });
 
-                var updateResponse = await _productApi.UpdateBlockInformationAsync(newProductDtoFromResponse.Id, updateProductInformation);
+                var updateResponse = await _productApi.UpdateBlockInformationAsync(newProductDtoFromResponse.Id, producInrmationBlockDto);
 
                 return new List<HttpResponseMessage> { response, updateResponse };
             }
