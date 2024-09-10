@@ -4,7 +4,7 @@ using nopCommerceWebApiClient.Objects.Product;
 namespace nopCommerceReplicatorServices.Actions
 {
     /// <summary>
-    /// This interface is used to implement product actions for target data (e.g. ProductNopCommerce).
+    /// This interface is used to implement _source actions for target data (e.g. ProductNopCommerce).
     /// </summary>
     public interface IProduct
     {
