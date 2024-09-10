@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
@@ -42,6 +43,8 @@ namespace nopCommerceReplicatorServices
                 // Add NLog
                 loggingBuilder.AddNLog();
             });
+            // Register NLog's ILogger
+            services.AddSingleton<NLog.ILogger>(provider => NLog.LogManager.GetCurrentClassLogger());
 
             services.AddDbContext<KeyBindingDbContext>();            
 
@@ -57,11 +60,9 @@ namespace nopCommerceReplicatorServices
 
             services.AddScoped<DataBinding.DataBinding>();
 
-
+            services.AddScoped<IDtoMapper, DtoMapper>();
 
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
-
-            
 
             // nopCommerce customer services
             services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
@@ -69,17 +70,17 @@ namespace nopCommerceReplicatorServices
                 return key switch
                 {
                     "CustomerNopCommerce" => serviceProvider.GetService<CustomerNopCommerce>() as ICustomer,                    
-                    _ => throw new ArgumentException($"Unknown key: {key}")
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
 
-            // nopCommerce product services
+            // nopCommerce _source services
             services.AddScoped<Func<string, IProduct>>(serviceProvider => key =>
             {
                 return key switch
                 {
                     "ProductNopCommerce" => serviceProvider.GetService<ProductNopCommerce>() as IProduct,
-                    _ => throw new ArgumentException($"Unknown key: {key}")
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
 
@@ -91,18 +92,18 @@ namespace nopCommerceReplicatorServices
                 {
                     "CustomerGT" => serviceProvider.GetService<CustomerGT>() as ICustomerSourceData,
                     "CustomerDjango" => serviceProvider.GetService<CustomerDjango>() as ICustomerSourceData,
-                    _ => throw new ArgumentException($"Unknown key: {key}")
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
 
-            // source product services
+            // source _source services
             services.AddScoped<Func<string, IProductSourceData>>(serviceProvider => key =>
             {
                 return key switch
                 {
                     "ProductGT" => serviceProvider.GetService<ProductGt>() as IProductSourceData,
                     //"ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
-                    _ => throw new ArgumentException($"Unknown key: {key}")
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
         }
