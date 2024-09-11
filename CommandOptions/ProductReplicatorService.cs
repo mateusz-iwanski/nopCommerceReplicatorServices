@@ -45,5 +45,29 @@ namespace nopCommerceReplicatorServices.CommandOptions
                 }
             }
         }
+
+        public async Task ReplicateProductInventoryAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        {
+            if (string.IsNullOrEmpty(serviceToReplicate))
+            {
+                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
+                return;
+            }
+
+            using (var scope = serviceProvider.CreateScope())
+            {
+                // get customer service which is marked for replication
+                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+
+                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
+
+                HttpResponseMessage response = await productNopCommerceService.UpdateProductInventoryAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+
+                Console.WriteLine($"Replicate product inventory with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
+
+                if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateInventoryAsync", response);
+            }
+        }
     }
 }
