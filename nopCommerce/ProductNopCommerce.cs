@@ -18,12 +18,12 @@ using System.Threading.Tasks;
 namespace nopCommerceReplicatorServices.nopCommerce
 {
     /// <summary>
-    /// Represents a class that interacts with the nopCommerce _source API.
+    /// Represents a class that interacts with the nopCommerce product API.
     /// </summary>
     public class ProductNopCommerce : IProduct
     {
         /// <summary>
-        /// Gets the service key name for the _source API.
+        /// Gets the service key name for the product API.
         /// </summary>
         public string ServiceKeyName { get => "Product"; }
 
@@ -44,10 +44,10 @@ namespace nopCommerceReplicatorServices.nopCommerce
         }
 
         /// <summary>
-        /// Gets a _source by its ID asynchronously.
+        /// Gets a product by its ID asynchronously.
         /// </summary>
-        /// <param name="productId">The ID of the _source.</param>
-        /// <returns>The _source DTO.</returns>
+        /// <param name="productId">The ID of the product.</param>
+        /// <returns>The product DTO.</returns>
         [DeserializeWebApiNopCommerceResponse]
         public async Task<ProductDto?> GetProductByIdAsync(int productId)
         {
@@ -55,14 +55,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
         }
 
         /// <summary>
-        /// Creates a _source in nopCommerce from SubiektGT with minimal data.
+        /// Creates a product in nopCommerce from SubiektGT with minimal data.
         /// </summary>
-        /// <param name="productId">The ID of the _source.</param>
-        /// <param name="productExternal">The external _source source data.</param>
+        /// <param name="productId">The ID of the product.</param>
+        /// <param name="productExternal">The external product source data.</param>
         /// <param name="setService">The chosen service.</param>
         /// <returns>The list of HTTP response messages.</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<IEnumerable<HttpResponseMessage>>? CreateProductWithMinimalDataAsync(int productId, IProductSourceData productExternal, Service setService)
+        public async Task<IEnumerable<HttpResponseMessage>>? CreateMinimalProductAsync(int productId, IProductSourceData productExternal, Service setService)
         {
             ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new CustomException($"Product does not exist in the source data");
 
@@ -74,10 +74,10 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 return null;
             }
 
-            // create _source with minimal data, leave default data
+            // create product with minimal data, leave default data
             HttpResponseMessage? response = await _productApi.CreateMinimalAsync(product);
 
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var productDtoString = await response.Content.ReadAsStringAsync();
@@ -86,9 +86,11 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 // bind data between nopCommerce and external services
                 dataBindingService.BindKey(newProductDtoFromResponse.Id, setService.ToString(), ServiceKeyName, productId.ToString());
 
-                // update block information with Gtin
+                // map the product data to the product block information DTO
                 var producInrmationBlockDto = _dtoMapper.Map<ProductUpdateBlockInformationDto, ProductDto>(newProductDtoFromResponse, new Dictionary<string, object> { { "Gtin", product.Gtin } });
 
+                // update block information with Gtin
+                // CreateMinimalAsync() doesn't have Gtin, so we need to update it
                 var updateResponse = await _productApi.UpdateBlockInformationAsync(newProductDtoFromResponse.Id, producInrmationBlockDto);
 
                 return new List<HttpResponseMessage> { response, updateResponse };
