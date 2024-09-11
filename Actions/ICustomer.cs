@@ -13,7 +13,22 @@ namespace nopCommerceReplicatorServices.Services
     /// </summary>
     public interface ICustomer
     {
+        /// <summary>
+        /// Gets the service key name for the customer API.
+        /// </summary>
         string ServiceKeyName { get; }
+
+        /// <summary>
+        /// Create a Polish customer in nopCommerce from SubiektGT
+        /// </summary>
+        /// <remarks>
+        /// Add only if not previously added.
+        /// The default password is random guid.
+        /// </remarks>
+        /// <param name="customerId">The client ID of the external service</param>
+        /// <param name="customerGate">External service with customer source data</param>
+        /// <param name="setService">The service used for replication</param>
+        /// <returns>Null when client added previously, HttpResponseMessage when client added</returns>
         Task<HttpResponseMessage>? CreatePLAsync(int customerId, ICustomerSourceData customerGate, Service setService);
     }
 }
