@@ -8,6 +8,7 @@ using Refit;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -120,7 +121,75 @@ namespace nopCommerceReplicatorServices.SubiektGT
         }
 
         /// <summary>
-        /// Add data from web api to the product.
+        /// Get the product's stock quantity from Subiekt GT, set the remaining available properties as default values.
+        /// </summary>
+        /// <remarks>
+        /// After retrieving the item quantity, set the remaining properties from the nopCommerce product you want to update.
+        /// </remarks>
+        /// <param name="productId">Subiekt GT product ID</param>
+        /// <returns>new ProductUpdateBlockInventoryDto</returns>
+        public async Task<ProductUpdateBlockInventoryDto>? GetInventoryByIdAsync(int productId)
+        {
+            ProductUpdateBlockInventoryDto? productUpdateBlockInventoryDto = null;
+
+            var query =
+                $@"
+                    SELECT 
+                        st_Stan, 
+                        t.tw_Nazwa, 
+                        t.tw_Symbol, 
+                        t.tw_Id, 
+                        tw_JednMiary, 
+                        st_StanRez 
+                    FROM 
+                        tw__towar
+                        INNER JOIN tw_Stan ON tw__towar.tw_Id = tw_Stan.st_TowId 
+                        where t.tw_Id = {productId}
+                ";
+
+            dbConnector.OpenConnection();
+
+            dbConnector.ExecuteQuery(query, async (reader) =>
+            {
+                while (reader.Read())
+                {
+
+                    int id = reader.GetInt32(reader.GetOrdinal("tw_Id"));
+                    decimal stockQuantity = reader.GetDecimal(reader.GetOrdinal("st_Stan"));
+                    decimal stockReservation = reader.GetDecimal(reader.GetOrdinal("st_StanRez"));
+                    decimal availableStockQuantity = stockQuantity - stockReservation;
+                    
+                    // create with only StockQuantity
+                    productUpdateBlockInventoryDto = new ProductUpdateBlockInventoryDto
+                    {
+                            ManageInventoryMethodId = 0,
+                            StockQuantity = (int)availableStockQuantity,
+                            ProductAvailabilityRangeId = 0,
+                            UseMultipleWarehouses = false,
+                            WarehouseId = 0,
+                            DisplayStockAvailability = false,
+                            DisplayStockQuantity = false,
+                            MinStockQuantity = 0,
+                            LowStockActivityId = 0,
+                            NotifyAdminForQuantityBelow = 0,
+                            BackorderModeId = 0,
+                            AllowBackInStockSubscriptions = false,
+                            OrderMinimumQuantity = 0,
+                            OrderMaximumQuantity = 0,
+                            NotReturnable = false,
+                            AllowedQuantities = null
+
+                    };
+                }
+            });
+
+            dbConnector.CloseConnection();
+
+            return productUpdateBlockInventoryDto;
+        }
+
+        /// <summary>
+        /// Add data from web api to the product for ProductCreateMinimalDto.
         /// </summary>
         /// <remarks>
         /// Some data can't be retrieved from Subiekt GT, so we need to get it from the web api.
