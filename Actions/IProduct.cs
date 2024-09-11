@@ -21,5 +21,13 @@ namespace nopCommerceReplicatorServices.Actions
         /// <param name="setService">The chosen service.</param>
         /// <returns>The list of HTTP response messages.</returns>
         Task<IEnumerable<HttpResponseMessage>>? CreateMinimalProductAsync(int customerId, IProductSourceData productGate, Service setService);
+
+        /// <summary>
+        /// Updates the inventory of a product in nopCommerce asynchronously.
+        /// </summary>
+        /// <param name="productId">The ID of the product from external service.</param>
+        /// <param name="productExternal">The external product source data.</param>         
+        /// <returns>The HTTP response message. Throw CustomException when product not found.</returns>
+        Task<HttpResponseMessage> UpdateProductInventoryAsync(int productId, IProductSourceData productExternal, Service setService)
     }
 }
