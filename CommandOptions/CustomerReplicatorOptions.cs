@@ -13,7 +13,7 @@ using static System.Formats.Asn1.AsnWriter;
 
 namespace nopCommerceReplicatorServices.CommandOptions
 {
-    public class CustomerReplicatorService
+    public class CustomerReplicatorOptions
     {
         public async Task ReplicateCustomerAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repCustomerId, bool showDetailsOption)
         {
