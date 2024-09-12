@@ -106,11 +106,22 @@ namespace nopCommerceReplicatorServices
             {
                 try
                 {
+                    // Skip properties without setters
+                    if (!targetProperty.CanWrite) continue;
+
                     // Find the matching property in the dtoSource object
-                    var sourceProperty = sourceProperties.FirstOrDefault(p => p.Name == targetProperty.Name && p.PropertyType == targetProperty.PropertyType);
+                    // The property must have the same name and type.
+                    // If target property is nullable, then the source property can be non-nullable
+                    // If source property is nullable, then the target property can't be non-nullable
+                    var sourceProperty = sourceProperties
+                        .FirstOrDefault(p => p.Name == targetProperty.Name &&
+                            (p.PropertyType == targetProperty.PropertyType) ||
+                            (p.PropertyType == Nullable.GetUnderlyingType(targetProperty.PropertyType)));
+                    ;
                     if (sourceProperty == null)
                     {
-                        throw new CustomException($"Property '{targetProperty.Name}' does not exist or type mismatch on dtoSource type '{dtoSource.GetType()}'");
+                        throw new CustomException($"Property '{targetProperty.Name}' does not exist or type mismatch on dtoSource type '{dtoSource.GetType()}'. " +
+                            "If source property is nullable, then the target property can't be non-nullable ");
                     }
 
                     object? value = sourceProperty.GetValue(dtoSource);
