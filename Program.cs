@@ -59,6 +59,11 @@ internal partial class Program
             "The product ID from the external service to be replicated."
         );
 
+        var repInventoryProductIdOption = new Option<int>(
+            "--replicate_product_inventory",
+            "The product ID from the external service to be replicated."
+        );
+
         // Create a help option
         var helpOption = new Option<bool>(
             "--help",
@@ -84,13 +89,24 @@ internal partial class Program
                     shCustomerIdOption,
                     shProductIdOption,
                     repProductIdOption,
+                    repInventoryProductIdOption,
                     helpOption,
                     showDetailsOption
                 };
 
         rootCommand.Description = "nopCommerce Replicator Service";
 
-        rootCommand.SetHandler(async (int repCustomerId, int shCustomerId, bool help, bool showDetailsOption, string serviceToReplicate, int shProductIdOption, int repProductIdOption) =>
+        rootCommand.SetHandler(
+            async (
+                int repCustomerId, 
+                int shCustomerId, 
+                bool help, 
+                bool showDetailsOption, 
+                string serviceToReplicate, 
+                int shProductIdOption, 
+                int repProductIdOption,
+                int repInventoryProductIdOption
+            ) =>
         {
             Service service;
 
@@ -115,7 +131,7 @@ internal partial class Program
             // service has to be marked
             if (repCustomerId > 0)
             {
-                var commandOption = new CustomerReplicatorService();
+                var commandOption = new CustomerReplicatorOptions();
                 await commandOption.ReplicateCustomerAsync(serviceToReplicate, serviceProvider, configuration, repCustomerId, showDetailsOption);
             }
 
@@ -123,14 +139,14 @@ internal partial class Program
             // service has to be marked
             if (shCustomerId > 0)
             {
-               var commandOption = new ExternalCustomerDisplayService();
-               await commandOption.ShowCustomerAsync(serviceToReplicate, serviceProvider, configuration, shCustomerId, showDetailsOption);
+                var commandOption = new ExternalCustomerDisplayOptions();
+                await commandOption.ShowCustomerAsync(serviceToReplicate, serviceProvider, configuration, shCustomerId, showDetailsOption);
             }
 
             // show product data from external service
             if (shProductIdOption > 0)
             {
-                var commandLine = new ExternalProductDisplayService();
+                var commandLine = new ExternalProductDisplayOptions();
                 await commandLine.ShowProductAsync(serviceToReplicate, serviceProvider, configuration, shProductIdOption, showDetailsOption);
             }
 
@@ -138,12 +154,27 @@ internal partial class Program
             // service has to be marked
             if (repProductIdOption > 0)
             {
-                var commandLine = new ProductReplicatorService();
+                var commandLine = new ProductReplicatorOptions();
                 await commandLine.ReplicateProductAsync(serviceToReplicate, serviceProvider, configuration, repProductIdOption, showDetailsOption);
             }
 
+            // replicate product inventory from external service
+            if (repInventoryProductIdOption > 0)
+            {
+                var commandLine = new ProductReplicatorOptions();
+                await commandLine.ReplicateProductInventoryAsync(serviceToReplicate, serviceProvider, configuration, repInventoryProductIdOption, showDetailsOption);
+            }
 
-        }, repCustomerIdOption, shCustomerIdOption, helpOption, showDetailsOption, serviceToReplicate, shProductIdOption, repProductIdOption);
+        }, 
+            repCustomerIdOption, 
+            shCustomerIdOption, 
+            helpOption, 
+            showDetailsOption, 
+            serviceToReplicate, 
+            shProductIdOption, 
+            repProductIdOption, 
+            repInventoryProductIdOption
+            );
 
         // Invoke the root command
         return await rootCommand.InvokeAsync(args);
