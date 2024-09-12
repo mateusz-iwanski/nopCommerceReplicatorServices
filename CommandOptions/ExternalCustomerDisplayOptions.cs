@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.CommandOptions
 {
-    public class ExternalCustomerDisplayService
+    public class ExternalCustomerDisplayOptions
     {
         public async Task ShowCustomerAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int shCustomerId, bool showDetailsOption)
         {
