@@ -28,11 +28,11 @@ namespace nopCommerceReplicatorServices.DataBinding
         /// <summary>
         /// Bind a ID from nopCommerce with a serviceName (ID, symbol etc.) from an external service.
         /// </summary>
-        /// <param name="nopCommerceCustomerId">The customer ID from nopCommerce</param>
-        /// <param name="serviceName">The key name of the external service (should be the same as ICustomer.ServiceKeyName)</param>  
+        /// <param name="nopCommerceId">The ID from nopCommerce</param>
+        /// <param name="serviceName">The key name of the external service (for example: should be the same as ICustomer.ServiceKeyName)</param>  
         /// <param name="serviceKey">The key name of the external service. Identifier, symbol... any unique you want to use)</param>
         /// <param name="serviceValue">The value of the external service. For example - if ID - "1","2","3" ... If symbol - "u1" "sas3" ... </param>
-        public void BindKey(int nopCommerceCustomerId, string serviceName, string serviceKey, string serviceValue)
+        public void BindKey(int nopCommerceId, string serviceName, string serviceKey, string serviceValue)
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -40,7 +40,7 @@ namespace nopCommerceReplicatorServices.DataBinding
 
                 var customerKeyBinding = new DataBindingEntity
                 {
-                    NopCommerceId = nopCommerceCustomerId,
+                    NopCommerceId = nopCommerceId,
                     ServiceName = serviceName,
                     ServiceKey = serviceKey,
                     ServiceValue = serviceValue
