@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
+using System.Runtime.CompilerServices;
 
 namespace nopCommerceReplicatorServices.Exceptions
 {
@@ -18,27 +19,34 @@ namespace nopCommerceReplicatorServices.Exceptions
             _logger = loggerFactory.CreateLogger<CustomException>();
         }
 
-        public CustomException(string message)
-            : base(message)
+        public CustomException(string message,
+            [CallerFilePath] string filePath = "",
+            [CallerLineNumber] int lineNumber = 0,
+            [CallerMemberName] string memberName = "")
+            : base($"File: {filePath}|Line: {lineNumber}|Member: {memberName}|message: {message}")
         {
-            LogException(message, null);
+            LogException(message, null, filePath, lineNumber, memberName);
         }
 
-        public CustomException(string message, Exception inner)
-            : base(message, inner)
+        public CustomException(string message, Exception inner,
+            [CallerFilePath] string filePath = "",
+            [CallerLineNumber] int lineNumber = 0,
+            [CallerMemberName] string memberName = "")
+            : base($"{message} (File: {filePath}, Line: {lineNumber}, Member: {memberName})", inner)
         {
-            LogException(message, inner);
+            LogException(message, inner, filePath, lineNumber, memberName);
         }
 
-        private void LogException(string message, Exception? innerException)
+        private void LogException(string message, Exception? innerException, string filePath, int lineNumber, string memberName)
         {
+            var logMessage = $"{message} (File: {filePath}, Line: {lineNumber}, Member: {memberName})";
             if (innerException != null)
             {
-                _logger.LogError(innerException, message);
+                _logger.LogError(innerException, logMessage);
             }
             else
             {
-                _logger.LogError(message);
+                _logger.LogError(logMessage);
             }
         }
     }
