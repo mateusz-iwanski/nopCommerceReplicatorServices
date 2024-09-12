@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.CommandOptions
 {
-    internal class ProductReplicatorService
+    internal class ProductReplicatorOptions
     {
         public async Task ReplicateProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
@@ -66,7 +66,7 @@ namespace nopCommerceReplicatorServices.CommandOptions
 
                 Console.WriteLine($"Replicate product inventory with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
 
-                if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateInventoryAsync", response);
+                if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductInventoryAsync", response);
             }
         }
     }
