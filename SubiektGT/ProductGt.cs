@@ -187,7 +187,53 @@ namespace nopCommerceReplicatorServices.SubiektGT
 
             return productUpdateBlockInventoryDto;
         }
-        
+
+        public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId, PriceLevelGT priceLevel)
+        {
+            ProductUpdateBlockPriceDto productPrice = null;
+
+            var query =
+                $@"
+                    SELECT 
+                        {priceLevel.ToString()},
+                        vat_Stawka
+                    FROM tw__Towar 
+                    INNER JOIN tw_Cena on tw_Id = tc_IdTowar  
+                    INNER JOIN sl_StawkaVAT on vat_Id = tw_IdVatSp
+                    WHERE 
+                        tw_Zablokowany = 'false' AND 
+                        tw_Usuniety = 'false' AND 
+                        tw_Rodzaj = 1
+                ";
+
+            dbConnector.OpenConnection();
+
+            dbConnector.ExecuteQuery(query, async (reader) =>
+            {
+                while (reader.Read())
+                {
+
+                    decimal price = reader.GetDecimal(reader.GetOrdinal(priceLevel.ToString()));
+                    decimal vatValue = reader.GetDecimal(reader.GetOrdinal("vat_Stawka"));
+
+                    productPrice = new ProductUpdateBlockPriceDto
+                    {
+                        Price = price,
+                        VatValue = vatValue
+                    };
+
+                }
+            });
+
+            dbConnector.CloseConnection();
+
+            if (productPrice == null) return null;
+
+            productPrice = await FillInDataByApiAsync(productPrice);
+
+            return productPrice;
+        }
+
         /// <summary>
         /// Add data from web api to the product for ProductCreateMinimalDto.
         /// </summary>
@@ -203,6 +249,20 @@ namespace nopCommerceReplicatorServices.SubiektGT
                 var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList[i].VatValue);
                 productList[i] = productList[i] with { TaxCategoryId = taxCategoryId };
             }
+        }
+
+        /// <summary>
+        /// Add data from web api to the product for ProductUpdateBlockPriceDto.
+        /// </summary>
+        /// <remarks>
+        /// Some data can't be retrieved from Subiekt GT, so we need to get it from the web api.
+        /// We can't do that from web api when we use DbDataReader because is not async.
+        /// </remarks>
+        /// <returns>ProductUpdateBlockPriceDto</returns>
+        private async Task<ProductUpdateBlockPriceDto> FillInDataByApiAsync(ProductUpdateBlockPriceDto productList)
+        {
+            var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList.VatValue);
+            return productList with { TaxCategoryId = taxCategoryId };            
         }
     }
 }
