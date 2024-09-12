@@ -136,15 +136,15 @@ namespace nopCommerceReplicatorServices.SubiektGT
                 $@"
                     SELECT 
                         st_Stan, 
-                        t.tw_Nazwa, 
-                        t.tw_Symbol, 
-                        t.tw_Id, 
+                        tw__towar.tw_Nazwa, 
+                        tw__towar.tw_Symbol, 
+                        tw__towar.tw_Id, 
                         tw_JednMiary, 
                         st_StanRez 
                     FROM 
                         tw__towar
                         INNER JOIN tw_Stan ON tw__towar.tw_Id = tw_Stan.st_TowId 
-                        where t.tw_Id = {productId}
+                        where tw__towar.tw_Id = {productId}
                 ";
 
             dbConnector.OpenConnection();
@@ -187,7 +187,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
 
             return productUpdateBlockInventoryDto;
         }
-
+        
         /// <summary>
         /// Add data from web api to the product for ProductCreateMinimalDto.
         /// </summary>
