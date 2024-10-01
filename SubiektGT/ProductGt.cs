@@ -40,7 +40,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
         /// </summary>
         /// <param name="fieldName">The field name to query by.</param>
         /// <param name="fieldValue">The field value to query by.</param>
-        /// <param name="priceLevels">Price levels to be shown. By default this is the retail price.</param>
+        /// <param name="priceLevel">Price levels to be shown. By default this is the retail price.</param>
         /// <returns>A ProductDto object if found; otherwise, null.</returns>
         public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
         {
@@ -157,7 +157,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
                     int id = reader.GetInt32(reader.GetOrdinal("tw_Id"));
                     decimal stockQuantity = reader.GetDecimal(reader.GetOrdinal("st_Stan"));
                     decimal stockReservation = reader.GetDecimal(reader.GetOrdinal("st_StanRez"));
-                    decimal availableStockQuantity = stockQuantity - stockReservation;
+                    decimal availableStockQuantity = CalculateAvailableStock(stockQuantity, stockReservation);
                     
                     // create with only StockQuantity
                     productUpdateBlockInventoryDto = new ProductUpdateBlockInventoryDto
@@ -188,6 +188,12 @@ namespace nopCommerceReplicatorServices.SubiektGT
             return productUpdateBlockInventoryDto;
         }
 
+        /// <summary>
+        /// Get the product's price from Subiekt GT, set the remaining available properties as default values.
+        /// </summary>
+        /// <param name="productId">Subiekt GT product ID</param>
+        /// <param name="priceLevel">Price levels to be shown. By default this is the retail price.</param>
+        /// <returns></returns>
         public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId, PriceLevelGT priceLevel)
         {
             ProductUpdateBlockPriceDto productPrice = null;
@@ -262,7 +268,9 @@ namespace nopCommerceReplicatorServices.SubiektGT
         private async Task<ProductUpdateBlockPriceDto> FillInDataByApiAsync(ProductUpdateBlockPriceDto productList)
         {
             var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList.VatValue);
-            return productList with { TaxCategoryId = taxCategoryId };            
+            return productList with { TaxCategoryId = taxCategoryId };
         }
+
+        private decimal CalculateAvailableStock(decimal stockQuantity, decimal stockReservation) => stockQuantity - stockReservation;
     }
 }
