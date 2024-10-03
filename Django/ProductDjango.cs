@@ -67,6 +67,12 @@ namespace nopCommerceReplicatorServices.Django
             return;
         }
 
+        public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
+        {
+            var products = await GetAsync("id", customerId.ToString());
+            return products?.FirstOrDefault();
+        }
+
         public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
         {
 
