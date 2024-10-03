@@ -127,6 +127,19 @@ namespace nopCommerceReplicatorServices.Django
         }
 
         /// <summary>
+        /// Get the product's price from Subiekt GT, set the remaining available properties as default values.
+        /// </summary>
+        /// <param name="productId">Subiekt GT product ID</param>
+        /// <param name="priceLevel">Price levels to be shown. By default this is the retail price.</param>
+        /// <returns></returns>
+        public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId, PriceLevelGT priceLevel)
+        {
+            var productGt = new ProductGt(_tax);
+            var priceBlock = await productGt.GetProductPriceByIdAsync(productId, priceLevel);            
+            return priceBlock;
+        }
+
+        /// <summary>
         /// Add data from web api to the product for ProductCreateMinimalDto.
         /// </summary>
         /// <remarks>
@@ -136,12 +149,12 @@ namespace nopCommerceReplicatorServices.Django
         /// <returns>Completed product data</returns>
         private async Task FillInDataByApiAsync(List<ProductCreateMinimalDto> productList, PriceLevelGT priceLevel)
         {
-            var productGt = new ProductGt(_tax);
+            
 
             for (int i = 0; i < productList.Count; i++)
             {
                 var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList[i].VatValue);
-                var priceBlock = await productGt.GetProductPriceByIdAsync(productList[i].SubiektGtId ?? 0, priceLevel);
+                var priceBlock = await GetProductPriceByIdAsync(productList[i].SubiektGtId ?? 0, priceLevel);
                 var price = priceBlock != null ? priceBlock.Price : 0;
 
                 productList[i] = productList[i] with { TaxCategoryId = taxCategoryId, Price = price };
