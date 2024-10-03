@@ -4,6 +4,7 @@ using nopCommerceWebApiClient.Objects.Product;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -71,6 +72,20 @@ namespace nopCommerceReplicatorServices.Django
         {
             var products = await GetAsync("id", customerId.ToString());
             return products?.FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Get the product's stock quantity from Subiekt GT, set the remaining available properties as default values.
+        /// </summary>
+        /// <remarks>
+        /// After retrieving the item quantity, set the remaining properties from the nopCommerce product you want to update.
+        /// </remarks>
+        /// <param name="productId">Subiekt GT product ID</param>
+        /// <returns>new ProductUpdateBlockInventoryDto</returns>
+        public async Task<ProductUpdateBlockInventoryDto>? GetInventoryByIdAsync(int productId)
+        {
+            var productGt = new ProductGt(_tax);
+            return await productGt.GetInventoryByIdAsync(productId);
         }
 
         public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
