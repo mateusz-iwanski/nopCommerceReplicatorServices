@@ -1,4 +1,5 @@
 ﻿using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient.Objects.Product;
 using System;
 using System.Collections.Generic;
@@ -9,9 +10,14 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.Django
 {
+    /// <summary>
+    /// Product source data from Django-Oscar ecommerce.
+    /// </summary>
     public class ProductDjango : IProductSourceData
     {
         private DBConnector dbConnector { get; set; }
+
+        private ITax _tax { get; set; }
 
         private string _productMainQuery = $@"
                 SELECT 
@@ -51,46 +57,82 @@ namespace nopCommerceReplicatorServices.Django
                     gtv_api_catalog_link
                 FROM public.catalogue_product";
 
-        public ProductDjango()
+        public ProductDjango(ITax tax)
         {
             dbConnector = new DBConnector("Django", "postgresql");
+
+            _tax = tax;
+
             dbConnector.Initialize();
             return;
         }
 
-        public Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue)
+        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
         {
 
-            var products = new List<ProductDto>();
+            List<ProductCreateMinimalDto> products = new List<ProductCreateMinimalDto>();
 
             var query = _productMainQuery + $" WHERE {fieldName} = '{fieldValue}';";
 
             dbConnector.OpenConnection();
 
-            dbConnector.ExecuteQuery(query, (reader) =>
+            dbConnector.ExecuteQuery(query, async (reader) =>
             {
                 while (reader.Read())
                 {
                     int id = reader.GetInt32(reader.GetOrdinal("id"));
                     string? name = reader.IsDBNull("title") ? null : reader.GetString(reader.GetOrdinal("title"));
                     string? sku = reader.IsDBNull("upc") ? null : reader.GetString(reader.GetOrdinal("upc"));
-                    
-                    //decimal price = reader.GetDecimal(reader.GetOrdinal(priceLevel.ToString())); //////
-                    
+
+                    // price get from subiekt GT
+                    int subiekt_gt_id = reader.GetInt32(reader.GetOrdinal("subiekt_gt_id"));
+
                     string? shortDesctiprion = reader.IsDBNull("description") ? null : reader.GetString(reader.GetOrdinal("description"));
                     string? supplierSymbol = reader.IsDBNull("numer_artykulu_producenta") ? null : reader.GetString(reader.GetOrdinal("numer_artykulu_producenta"));
                     string? gtin = null;
                     decimal weight = reader.IsDBNull("waga_w_kg") ? 0.0m : reader.GetDecimal(reader.GetOrdinal("waga_w_kg"));
 
-                    decimal width = GetProductAttributeValueByName(id, "szerokość");// reader.IsDBNull("tw_Szerokosc") ? 0.0m : reader.GetDecimal(reader.GetOrdinal("tw_Szerokosc"));
-                    decimal length = reader.IsDBNull("tw_Wysokosc") ? 0.0m : reader.GetDecimal(reader.GetOrdinal("tw_Wysokosc"));
-                    decimal depth = reader.IsDBNull("tw_Glebokosc") ? 0.0m : reader.GetDecimal(reader.GetOrdinal("tw_Glebokosc"));
+                    decimal width = getMeasures(id, "szerokość") ?? 0.0m;// reader.IsDBNull("tw_Szerokosc") ? 0.0m : reader.GetDecimal(reader.GetOrdinal("tw_Szerokosc"));
+                    decimal length = getMeasures(id, "długość") ?? 0.0m;
+                    decimal depth = getMeasures(id, "głębokość") ?? 0.0m;
 
                     decimal vatValue = reader.GetDecimal(reader.GetOrdinal("vat_Stawka"));
+
+                    ProductCreateMinimalDto product = new ProductCreateMinimalDto
+                    {
+                        Name = name,
+                        Sku = sku,
+                        Price = 0,
+                        TaxCategoryId = 0,
+                        Weight = weight,
+                        Length = length,
+                        Width = width,
+                        Height = depth,
+                        Gtin = gtin,
+                        ShortDescription = shortDesctiprion,
+                        ManufacturerPartNumber = supplierSymbol,
+                        VatValue = vatValue,
+                        SubiektGtId = subiekt_gt_id
+                    };
+
+                    products.Add(product);
                 }
             });
-        }
 
+            await FillInDataByApiAsync(products);
+
+            dbConnector.CloseConnection();
+
+            return products;
+        }
+       
+
+        // Get product measures attribute value by name from django ecommerce
+        private decimal? getMeasures(int productId, string productAttributeName) =>
+            Decimal.TryParse(GetProductAttributeValueByName(productId, productAttributeName).Replace("mm", ""), out _) == true ?
+            Decimal.Parse(GetProductAttributeValueByName(productId, productAttributeName)) : null;
+
+        // Get product attribute value by name from django ecommerce
         public string? GetProductAttributeValueByName(int productId, string productAttributeName)
         {
 
