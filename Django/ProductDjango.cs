@@ -119,13 +119,34 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            await FillInDataByApiAsync(products);
+            await FillInDataByApiAsync(products, priceLevel);
 
             dbConnector.CloseConnection();
 
             return products;
         }
-       
+
+        /// <summary>
+        /// Add data from web api to the product for ProductCreateMinimalDto.
+        /// </summary>
+        /// <remarks>
+        /// Some data can't be retrieved from Subiekt GT, so we need to get it from the web api.
+        /// We can't do that from web api when we use DbDataReader because is not async.
+        /// </remarks>
+        /// <returns>Completed product data</returns>
+        private async Task FillInDataByApiAsync(List<ProductCreateMinimalDto> productList, PriceLevelGT priceLevel)
+        {
+            var productGt = new ProductGt(_tax);
+
+            for (int i = 0; i < productList.Count; i++)
+            {
+                var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList[i].VatValue);
+                var priceBlock = await productGt.GetProductPriceByIdAsync(productList[i].SubiektGtId ?? 0, priceLevel);
+                var price = priceBlock != null ? priceBlock.Price : 0;
+
+                productList[i] = productList[i] with { TaxCategoryId = taxCategoryId, Price = price };
+            }
+        }
 
         // Get product measures attribute value by name from django ecommerce
         private decimal? getMeasures(int productId, string productAttributeName) =>
