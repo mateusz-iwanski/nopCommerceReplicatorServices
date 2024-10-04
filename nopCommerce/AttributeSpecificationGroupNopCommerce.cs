@@ -1,5 +1,7 @@
 ﻿using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.SpecificationAttribute;
+using nopCommerceWebApiClient.Objects.SpecificationAttribute;
+using nopCommerceWebApiClient.Objects.SpecyficationAttributeGroup;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,14 +23,17 @@ namespace nopCommerceReplicatorServices.nopCommerce
             _serviceProvider = serviceProvider;
         }
 
-        public Task CreateSpecificationAttributeGroupAsync()
+        /// <summary>
+        /// Get a spec attribute group by name
+        /// </summary>
+        /// <param name="name">name of attribute option</param>
+        /// <returns>If exists SpecificationAttributeOptionDto, null if not</returns>
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<SpecificationAttributeGroupDto>? GetByNameAsync(string name)
         {
-            throw new NotImplementedException();
-        }
+            var allSpecAttrGroup = await _specificationAttributeGroupApi.GetAllAsync();
 
-        public Task UpdateSpecificationAttributeGroupAsync()
-        {
-            throw new NotImplementedException();
+            return allSpecAttrGroup.FirstOrDefault(x => x.Name == name);
         }
     }
 }
