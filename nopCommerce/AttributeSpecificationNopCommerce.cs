@@ -34,13 +34,52 @@ namespace nopCommerceReplicatorServices.nopCommerce
         {
             _specificationAttributerApi = apiServices.SpecificationAttributeService;
             _serviceProvider = serviceProvider;
-        }        
+        }
+
+        /// <summary>
+        /// Create a new specification attribute with group and value. If exists return it.
+        /// </summary>
+        /// <param name="groupName">Product, Accessories, Board etc.</param>        
+        /// <param name="value">Color, Opening angle, etc.</param>
+        /// <param name="optionName">Red, Black, Left corner etc.</param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task<SpecificationAttributeDto> CreateSetAsync(string groupName, string value, string optionName)
+        {
+            var atrrSpecOptionService = _serviceProvider.GetService<AttributeSpecificationOptionNopCommerce>();
+            var atrrSpecGroupService = _serviceProvider.GetService<AttributeSpecificationGroupNopCommerce>();
+
+            // create or get group
+            var atrrSpecGroupObjectDto = await atrrSpecGroupService.CreateAsync(
+                new SpecificationAttributeGroupCreateDto
+                {
+                    Name = groupName
+                });
+
+            // create or get attribute
+            var attrObjectDto = await CreateAsync(
+                new SpecificationAttributeCreateDto
+                {
+                    SpecificationAttributeGroupId = atrrSpecGroupObjectDto.Id,
+                    Name = value
+                });
+
+            // create or get option
+            var attrValueObjectDto = await atrrSpecOptionService.CreateAsync(
+                new SpecificationAttributeOptionCreateDto
+                {
+                    SpecificationAttributeId = attrObjectDto.Id,
+                    Name = optionName
+                });
+
+            return attrObjectDto;
+        }
 
         /// <summary>
         /// Create a new spec attribute group. If there is such an option, just return it.
         /// </summary>
-        /// <param name="attributeSpecificationOptionNopCommerce">SpecificationAttributeOptionCreateDto</param>
-        /// <returns>SpecificationAttributeOptionDto or throw CustomException</returns>
+        /// <param name="attributeSpecificationNopCommerce">SpecificationAttributeOptionCreateDto</param>
+        /// <returns>SpecificationAttributeDto or throw CustomException</returns>
         [DeserializeWebApiNopCommerceResponse]
         public async Task<SpecificationAttributeDto> CreateAsync(SpecificationAttributeCreateDto attributeSpecificationNopCommerce)
         {
