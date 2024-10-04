@@ -12,7 +12,13 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.nopCommerce
 {
-    internal class AttributeSpecificationOptionNopCommerce
+
+    /// <summary>
+    /// Option for attribute specification
+    /// 
+    /// For example: Red, Black, Left corner etc.
+    /// </summary>
+    public class AttributeSpecificationOptionNopCommerce
     {
         private ISpecificationAttributeOptionService _specificationAttributeOptionApi { get; set; }
 
