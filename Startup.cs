@@ -48,20 +48,27 @@ namespace nopCommerceReplicatorServices
 
             services.AddDbContext<KeyBindingDbContext>();            
 
+            // Nopcommerce
             services.AddScoped<CustomerNopCommerce>();
-            services.AddScoped<ProductNopCommerce>();            
+            services.AddScoped<ProductNopCommerce>();
 
-            services.AddScoped<CustomerGT>();
-            services.AddScoped<CustomerDjango>();
-
-            services.AddScoped<ProductGt>();
+            services.AddScoped<AttributeSpecificationNopCommerce>();
+            services.AddScoped<AttributeSpecificationOptionNopCommerce>();
+            services.AddScoped<AttributeSpecificationGroupNopCommerce>();
+            services.AddScoped<ProductSpecificationAttributeMappingNopCommerce>();
 
             services.AddScoped<ITax, TaxNopCommerce>();
 
-            services.AddScoped<DataBinding.DataBinding>();
+            // external 
+            services.AddScoped<CustomerGT>();
+            services.AddScoped<CustomerDjango>();
+            services.AddScoped<ProductGt>();                   
 
+            // utils
+            services.AddScoped<DataBinding.DataBinding>();
             services.AddScoped<IDtoMapper, DtoMapper>();
 
+            // rest
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
 
             // nopCommerce customer services
