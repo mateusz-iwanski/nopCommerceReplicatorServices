@@ -30,7 +30,48 @@ namespace nopCommerceReplicatorServices.nopCommerce
             _serviceProvider = serviceProvider;
             _productSpecificationAttributeMappingService = apiServices.ProductSpecificationAttributeMappingService;
         }
-       
+
+        /// <summary>
+        /// Create a new specification attribute mapping with the product. If such a mapping exists 
+        /// where it contains the product ID and the specification attribute option id, just return it.
+        /// </summary>
+        /// <remarks>
+        /// Look on GetByIds, if checking over product ID and the specification attribute option ID is 
+        /// not enough, change it.
+        /// </remarks>
+        /// <param name="ProductDto">ProductDto</param>
+        /// <param name="SpecificationAttributeOptionDto">SpecificationAttributeOptionDto</param>
+        /// <returns>ProductSpecificationAttributeMappingDto or throw CustomException</returns>
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<ProductSpecificationAttributeMappingDto> Create(ProductDto product, SpecificationAttributeOptionDto specificationAttributeOptionDto)
+        {
+            try
+            {
+                // if exists return
+                var existing = await GetByIds(product.Id, specificationAttributeOptionDto.Id);
+                if (existing != null) return existing;
+
+                // if not exists add new
+                var apiResponse = await _productSpecificationAttributeMappingService.CreateAsync(
+                    new ProductSpecificationAttributeMappingCreateDto
+                    {
+                        ProductId = product.Id,
+                        SpecificationAttributeOptionId = specificationAttributeOptionDto.Id
+                    });
+
+                if (apiResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new CustomException($"Failed to link to product and specification attribute. {apiResponse.ReasonPhrase}");
+                }
+
+                return await apiResponse.Content.ReadFromJsonAsync<ProductSpecificationAttributeMappingDto>();
+            }
+            catch (Exception ex)
+            {
+                throw new CustomException($"Failed to link to product and specification attribute. {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Get a specification attribute mapping
         /// </summary>
