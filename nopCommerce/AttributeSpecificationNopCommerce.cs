@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,8 +34,37 @@ namespace nopCommerceReplicatorServices.nopCommerce
         {
             _specificationAttributerApi = apiServices.SpecificationAttributeService;
             _serviceProvider = serviceProvider;
+        }        
+
+        /// <summary>
+        /// Create a new spec attribute group. If there is such an option, just return it.
+        /// </summary>
+        /// <param name="attributeSpecificationOptionNopCommerce">SpecificationAttributeOptionCreateDto</param>
+        /// <returns>SpecificationAttributeOptionDto or throw CustomException</returns>
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<SpecificationAttributeDto> CreateAsync(SpecificationAttributeCreateDto attributeSpecificationNopCommerce)
+        {
+            try
+            {
+                // if exists return
+                var existing = await GetByNameAsync(attributeSpecificationNopCommerce.Name);
+                if (existing != null) return existing;
+
+                // if not exists add new
+                var apiResponse = await _specificationAttributerApi.CreateAsync(attributeSpecificationNopCommerce);
+                if (apiResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new CustomException($"Failed to create a new specification attribute. {apiResponse.ReasonPhrase}");
+                }
+
+                return await apiResponse.Content.ReadFromJsonAsync<SpecificationAttributeDto>();
+            }
+            catch (Exception ex)
+            {
+                throw new CustomException($"Failed to create a new specification attribute group. {ex.Message}");
+            }
         }
-        
+
         /// <summary>
         /// Get a specification attribute
         /// </summary>
