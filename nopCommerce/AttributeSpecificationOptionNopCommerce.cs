@@ -25,6 +25,35 @@ namespace nopCommerceReplicatorServices.nopCommerce
         }
 
         /// <summary>
+        /// Create a new spec attribute option. If there is such an option, just return it.
+        /// </summary>
+        /// <param name="attributeSpecificationOptionNopCommerce">SpecificationAttributeOptionCreateDto</param>
+        /// <returns>SpecificationAttributeOptionDto or throw CustomException</returns>
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<SpecificationAttributeOptionDto> CreateAsync(SpecificationAttributeOptionCreateDto attributeSpecificationOptionNopCommerce)
+        {
+            try
+            {
+                // if exists return
+                var existing = await GetByNameAsync(attributeSpecificationOptionNopCommerce.Name);                
+                if (existing != null) return existing;
+
+                // if not exists add new
+                var apiResponse = await _specificationAttributeOptionApi.CreateAsync(attributeSpecificationOptionNopCommerce);
+                if (apiResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new CustomException($"Failed to create a new specification attribute option. {apiResponse.ReasonPhrase}");
+                }
+
+                return await apiResponse.Content.ReadFromJsonAsync<SpecificationAttributeOptionDto>();
+            }
+            catch (Exception ex)
+            {
+                throw new CustomException($"Failed to create a new specification attribute option. {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Get a spec attribute option by name
         /// </summary>
         /// <param name="name">name of attribute option</param>
