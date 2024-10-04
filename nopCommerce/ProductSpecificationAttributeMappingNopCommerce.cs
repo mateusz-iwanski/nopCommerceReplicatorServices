@@ -30,7 +30,18 @@ namespace nopCommerceReplicatorServices.nopCommerce
             _serviceProvider = serviceProvider;
             _productSpecificationAttributeMappingService = apiServices.ProductSpecificationAttributeMappingService;
         }
-
        
+        /// <summary>
+        /// Get a specification attribute mapping
+        /// </summary>
+        /// <param name="productId">product ID</param>
+        /// <param name="attributeSpecificationOptionId">attribute specification option ID</param>
+        /// <returns>If exists ProductSpecificationAttributeMappingDto, null if not</returns>
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<ProductSpecificationAttributeMappingDto>? GetByIds(int productId, int attributeSpecificationOptionId)
+        {
+            var maps = await _productSpecificationAttributeMappingService.GetAllAsync();
+            return maps.FirstOrDefault(x => x.ProductId == productId && x.SpecificationAttributeOptionId == attributeSpecificationOptionId);
+        }
     }
 }
