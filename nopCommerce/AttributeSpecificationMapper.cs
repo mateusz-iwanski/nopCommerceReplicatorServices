@@ -47,6 +47,15 @@ namespace nopCommerceReplicatorServices.nopCommerce
             await createAsync(specificationAttributeOptionDto);
         }
 
-       
+        /// <summary>
+        /// Create a new specification attribute mapping with the product.
+        /// </summary>
+        /// <param name="specificationAttributeOptionDto">SpecificationAttributeOptionDto</param>
+        /// <returns></returns>
+        private async Task createAsync(SpecificationAttributeOptionDto specificationAttributeOptionDto)
+        {
+            var productSpecificationAttributeMappingNopCommerceService = _serviceProvider.GetService<ProductSpecificationAttributeMappingNopCommerce>();
+            await productSpecificationAttributeMappingNopCommerceService.CreateAsync(_productDto, specificationAttributeOptionDto);
+        }
     }
 }
