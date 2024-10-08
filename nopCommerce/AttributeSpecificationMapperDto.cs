@@ -9,8 +9,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// <summary>
     /// Object is used to map attribute specification (from external source) to product
     /// </summary>
-    /// <param name="groupName">Product, Accessories, Board etc.</param>        
-    /// <param name="value">Color, Opening angle, etc.</param>
-    /// <param name="optionName">Red, Black, Left corner etc.</param>
-    public record AttributeSpecificationMapperDto(string groupName, string value, string optionName);
+    /// <param name="GroupName">Product, Accessories, Board etc.</param>        
+    /// <param name="Value">Color, Opening angle, etc.</param>
+    /// <param name="OptionName">Red, Black, Left corner etc.</param>
+    public record AttributeSpecificationMapperDto(string GroupName, string Value, string OptionName);
 }
