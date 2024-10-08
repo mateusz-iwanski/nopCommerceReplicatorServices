@@ -28,7 +28,7 @@ namespace nopCommerceReplicatorServices.Django
         /// Get attribute by product ID
         /// </summary>
         /// <param name="productId"></param>
-        /// <returns>List of AttributeSpecificationMapperDto</returns>
+        /// <returns>List of AttributeSpecificationMapperDto, null if not exists</returns>
         public IEnumerable<AttributeSpecificationMapperDto>? Get(int productId)
         {
 
