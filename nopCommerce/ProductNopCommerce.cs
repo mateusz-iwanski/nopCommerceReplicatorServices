@@ -66,7 +66,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         [DeserializeWebApiNopCommerceResponse]
         public async Task<IEnumerable<HttpResponseMessage>>? CreateMinimalProductAsync(int productId, IProductSourceData productExternal, Service setService)
         {
-            ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new CustomException($"Product does not exist in the external service data");
+            ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
 
             using var scope = _serviceProvider.CreateScope();
             var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
@@ -122,8 +122,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 return null;
             }
 
-            ProductUpdateBlockInventoryDto? productInventoryBlock = await productExternal.GetInventoryByIdAsync(productId) ?? throw new CustomException($"Product does not exist in the external service data");
-            ProductDto product = await GetProductByIdAsync(dataBinding.NopCommerceId) ?? throw new CustomException($"Product does not exist in the nopCommerce data");
+            ProductUpdateBlockInventoryDto? productInventoryBlock = await productExternal.GetInventoryByIdAsync(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
+            ProductDto product = await GetProductByIdAsync(dataBinding.NopCommerceId) ?? throw new Exceptions.CustomException($"Product does not exist in the nopCommerce data");
 
             // map the product data to the product block inventory DTO
             var producInventoryBlockDto = _dtoMapper.Map<ProductUpdateBlockInventoryDto, ProductDto>(product, new Dictionary<string, object> { { "StockQuantity", productInventoryBlock.StockQuantity } });
@@ -148,7 +148,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 return null;
             }
 
-            ProductUpdateBlockPriceDto? productPriceBlock = await productExternal.GetProductPriceByIdAsync(productId) ?? throw new CustomException($"Product does not exist in the external service data");
+            ProductUpdateBlockPriceDto? productPriceBlock = await productExternal.GetProductPriceByIdAsync(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
         }
     }
 }

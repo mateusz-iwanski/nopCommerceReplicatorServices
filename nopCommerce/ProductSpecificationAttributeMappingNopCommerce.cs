@@ -62,14 +62,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
                 if (apiResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new CustomException($"Failed to link to product and specification attribute. {apiResponse.ReasonPhrase}");
+                    throw new Exceptions.CustomException($"Failed to link to product and specification attribute. {apiResponse.ReasonPhrase}");
                 }
 
                 return await apiResponse.Content.ReadFromJsonAsync<ProductSpecificationAttributeMappingDto>();
             }
             catch (Exception ex)
             {
-                throw new CustomException($"Failed to link to product and specification attribute. {ex.Message}");
+                throw new Exceptions.CustomException($"Failed to link to product and specification attribute. {ex.Message}");
             }
         }
 

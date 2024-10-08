@@ -49,14 +49,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 var apiResponse = await _specificationAttributeGroupApi.CreateAsync(attributeSpecificationGroupNopCommerce);
                 if (apiResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new CustomException($"Failed to create a new specification attribute group. {apiResponse.ReasonPhrase}");
+                    throw new Exceptions.CustomException($"Failed to create a new specification attribute group. {apiResponse.ReasonPhrase}");
                 }
 
                 return await apiResponse.Content.ReadFromJsonAsync<SpecificationAttributeGroupDto>();
             }
             catch (Exception ex)
             {
-                throw new CustomException($"Failed to create a new specification attribute group. {ex.Message}");
+                throw new Exceptions.CustomException($"Failed to create a new specification attribute group. {ex.Message}");
             }
         }
 

@@ -49,7 +49,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         [DeserializeWebApiNopCommerceResponse]
         public async Task<HttpResponseMessage>? CreatePLAsync(int customerId, ICustomerSourceData customerGate, Service setService)
         {
-            CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new CustomException($"Customer does not exist in the source data");
+            CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new Exceptions.CustomException($"Customer does not exist in the source data");
 
             using (var scope = _serviceProvider.CreateScope())
             {

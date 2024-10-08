@@ -42,7 +42,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
             var attributeSpecificationOptionService = _serviceProvider.GetService<AttributeSpecificationOptionNopCommerce>();
             var specificationAttributeOptionDto = await attributeSpecificationOptionService.GetBySpecificationAttributeIdAsync(attributeSpecificationDto.Id) ??
-                throw new CusomtException("SpecificationAttributeOption with specification attribute Id not exists");
+                throw new CustomException("SpecificationAttributeOption with specification attribute Id not exists");
 
             await createAsync(specificationAttributeOptionDto);
         }

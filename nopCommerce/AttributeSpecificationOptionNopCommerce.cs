@@ -48,14 +48,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 var apiResponse = await _specificationAttributeOptionApi.CreateAsync(attributeSpecificationOptionNopCommerce);
                 if (apiResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new CustomException($"Failed to create a new specification attribute option. {apiResponse.ReasonPhrase}");
+                    throw new Exceptions.CustomException($"Failed to create a new specification attribute option. {apiResponse.ReasonPhrase}");
                 }
 
                 return await apiResponse.Content.ReadFromJsonAsync<SpecificationAttributeOptionDto>();
             }
             catch (Exception ex)
             {
-                throw new CustomException($"Failed to create a new specification attribute option. {ex.Message}");
+                throw new Exceptions.CustomException($"Failed to create a new specification attribute option. {ex.Message}");
             }
         }
 
