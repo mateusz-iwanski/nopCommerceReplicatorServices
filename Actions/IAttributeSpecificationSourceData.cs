@@ -1,6 +1,6 @@
 ﻿using nopCommerceReplicatorServices.nopCommerce;
 
-namespace nopCommerceReplicatorServices.Django
+namespace nopCommerceReplicatorServices.Actions
 {
     public interface IAttributeSpecificationSourceData
     {
