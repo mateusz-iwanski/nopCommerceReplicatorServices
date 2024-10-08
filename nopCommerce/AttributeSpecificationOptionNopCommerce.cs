@@ -71,5 +71,18 @@ namespace nopCommerceReplicatorServices.nopCommerce
             
             return allSpecAttrOption.FirstOrDefault(x => x.Name == name);
         }
+
+        /// <summary>
+        /// Get a spec attribute option by specification attribute id
+        /// </summary>
+        /// <param name="name">option ID</param>
+        /// <returns>If exists SpecificationAttributeOptionDto, null if not</returns>
+        [DeserializeWebApiNopCommerceResponse]
+        public async Task<SpecificationAttributeOptionDto>? GetBySpecificationAttributeIdAsync(int specificationAttributeId)
+        {
+            var allSpecAttrOption = await _specificationAttributeOptionApi.GetAllAsync();
+
+            return allSpecAttrOption.FirstOrDefault(x => x.SpecificationAttributeId == specificationAttributeId);
+        }
     }
 }
