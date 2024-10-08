@@ -44,7 +44,13 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <returns>ProductSpecificationAttributeMappingDto or throw CustomException</returns>
         /// 
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<ProductSpecificationAttributeMappingDto> CreateAsync(ProductDto product, SpecificationAttributeOptionDto specificationAttributeOptionDto)
+        public async Task<ProductSpecificationAttributeMappingDto> CreateAsync(
+            ProductDto product, 
+            SpecificationAttributeOptionDto specificationAttributeOptionDto
+            bool allowFiltering,
+            bool showOnProductPage,
+            int displayOrder
+            )
         {
             try
             {
@@ -57,7 +63,10 @@ namespace nopCommerceReplicatorServices.nopCommerce
                     new ProductSpecificationAttributeMappingCreateDto
                     {
                         ProductId = product.Id,
-                        SpecificationAttributeOptionId = specificationAttributeOptionDto.Id
+                        SpecificationAttributeOptionId = specificationAttributeOptionDto.Id,
+                        AllowFiltering = allowFiltering,
+                        ShowOnProductPage = showOnProductPage,
+                        DisplayOrder = displayOrder
                     });
 
                 if (apiResponse.StatusCode != HttpStatusCode.OK)
