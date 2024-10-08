@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 namespace nopCommerceReplicatorServices.nopCommerce
 {
     /// <summary>
-    /// Connect attribute specyfication with product
+    /// Connect attribute specification with product
     /// </summary>
     public class ProductSpecificationAttributeMappingNopCommerce
     {
@@ -42,13 +42,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="ProductDto">ProductDto</param>
         /// <param name="SpecificationAttributeOptionDto">SpecificationAttributeOptionDto</param>
         /// <returns>ProductSpecificationAttributeMappingDto or throw CustomException</returns>
+        /// 
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<ProductSpecificationAttributeMappingDto> Create(ProductDto product, SpecificationAttributeOptionDto specificationAttributeOptionDto)
+        public async Task<ProductSpecificationAttributeMappingDto> CreateAsync(ProductDto product, SpecificationAttributeOptionDto specificationAttributeOptionDto)
         {
             try
             {
                 // if exists return
-                var existing = await GetByIds(product.Id, specificationAttributeOptionDto.Id);
+                var existing = await GetByIdsAsync(product.Id, specificationAttributeOptionDto.Id);
                 if (existing != null) return existing;
 
                 // if not exists add new
@@ -79,7 +80,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="attributeSpecificationOptionId">attribute specification option ID</param>
         /// <returns>If exists ProductSpecificationAttributeMappingDto, null if not</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<ProductSpecificationAttributeMappingDto>? GetByIds(int productId, int attributeSpecificationOptionId)
+        public async Task<ProductSpecificationAttributeMappingDto>? GetByIdsAsync(int productId, int attributeSpecificationOptionId)
         {
             var maps = await _productSpecificationAttributeMappingService.GetAllAsync();
             return maps.FirstOrDefault(x => x.ProductId == productId && x.SpecificationAttributeOptionId == attributeSpecificationOptionId);
