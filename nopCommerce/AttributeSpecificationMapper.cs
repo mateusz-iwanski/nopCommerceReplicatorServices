@@ -35,10 +35,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="groupName">Product, Accessories, Board etc.</param>        
         /// <param name="value">Color, Opening angle, etc.</param>
         /// <param name="optionName">Red, Black, Left corner etc.</param>
-        public async Task Map(string groupName, string value, string optionName)
+        public async Task Map(AttributeSpecificationMapperDto attributeSpecificationMapperDto)
         {
             var attributeSpecificationService = _serviceProvider.GetService<AttributeSpecificationNopCommerce>();
-            SpecificationAttributeDto attributeSpecificationDto = await attributeSpecificationService.CreateSetAsync(groupName, value, optionName);
+            SpecificationAttributeDto attributeSpecificationDto = await attributeSpecificationService.CreateSetAsync(
+                attributeSpecificationMapperDto.groupName,
+                attributeSpecificationMapperDto.value,
+                attributeSpecificationMapperDto.optionName
+                );
 
             var attributeSpecificationOptionService = _serviceProvider.GetService<AttributeSpecificationOptionNopCommerce>();
             var specificationAttributeOptionDto = await attributeSpecificationOptionService.GetBySpecificationAttributeIdAsync(attributeSpecificationDto.Id) ??
@@ -55,7 +59,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         private async Task createAsync(SpecificationAttributeOptionDto specificationAttributeOptionDto)
         {
             var productSpecificationAttributeMappingNopCommerceService = _serviceProvider.GetService<ProductSpecificationAttributeMappingNopCommerce>();
-            await productSpecificationAttributeMappingNopCommerceService.CreateAsync(_productDto, specificationAttributeOptionDto);
+            await productSpecificationAttributeMappingNopCommerceService.CreateAsync(_productDto, specificationAttributeOptionDto, true, true, 0);
         }
     }
 }
