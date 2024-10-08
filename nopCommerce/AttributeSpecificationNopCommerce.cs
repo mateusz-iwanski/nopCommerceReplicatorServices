@@ -57,7 +57,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 });
 
             // create or get attribute
-            var attrObjectDto = await CreateAsync(
+            var attrObjectDto = await createAsync(
                 new SpecificationAttributeCreateDto
                 {
                     SpecificationAttributeGroupId = atrrSpecGroupObjectDto.Id,
@@ -81,7 +81,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="attributeSpecificationNopCommerce">SpecificationAttributeOptionCreateDto</param>
         /// <returns>SpecificationAttributeDto or throw CustomException</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<SpecificationAttributeDto> CreateAsync(SpecificationAttributeCreateDto attributeSpecificationNopCommerce)
+        private async Task<SpecificationAttributeDto> createAsync(SpecificationAttributeCreateDto attributeSpecificationNopCommerce)
         {
             try
             {
