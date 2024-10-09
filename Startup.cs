@@ -61,8 +61,11 @@ namespace nopCommerceReplicatorServices
 
             // external 
             services.AddScoped<CustomerGT>();
+            services.AddScoped<ProductGt>();
+
             services.AddScoped<CustomerDjango>();
-            services.AddScoped<ProductGt>();                   
+            services.AddScoped<AttributeSpecificationDjango>();
+
 
             // utils
             services.AddScoped<DataBinding.DataBinding>();
@@ -91,6 +94,16 @@ namespace nopCommerceReplicatorServices
                 };
             });
 
+            services.AddScoped<Func<string, IProductSpecificationAttributeMapping>>(serviceProvider => key =>
+            {
+                return key switch
+                {
+                    "AttributeSpecificationNopCommerce" => serviceProvider.GetService<AttributeSpecificationDjango>() as IProductSpecificationAttributeMapping,
+                    //"ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
+                };
+            });
+
 
             // source customer services
             services.AddScoped<Func<string, ICustomerSourceData>>(serviceProvider => key =>
@@ -113,6 +126,20 @@ namespace nopCommerceReplicatorServices
                     _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
+
+            services.AddScoped<Func<string, IAttributeSpecificationSourceData>>(serviceProvider => key =>
+            {
+                return key switch
+                {
+                    "AttributeSpecificationGT" => serviceProvider.GetService<AttributeSpecificationDjango>() as IAttributeSpecificationSourceData,
+                    //"ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
+                };
+            });
+
+
+
+
         }
     }
 }
