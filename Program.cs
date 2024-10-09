@@ -195,7 +195,7 @@ internal partial class Program
         }
 
         // replicate product attribute specification from external service
-        if (args.RepInventoryProductIdOption > 0)
+        if (args.RepAttributeSpecificationProductIdOption > 0)
         {
             var commandLine = new ProductReplicatorOptions();
             await commandLine.ReplicateProductAttributeSpecificationAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepAttributeSpecificationProductIdOption, args.ShowDetailsOption);
