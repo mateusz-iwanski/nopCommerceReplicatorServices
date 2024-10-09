@@ -12,6 +12,11 @@ namespace nopCommerceReplicatorServices.CommandOptions
 {
     internal class ProductReplicatorOptions
     {
+        /// <summary>
+        /// Creates a product in nopCommerce from SubiektGT with minimal data. 
+        /// If the data has been previously bound do nothing. Throw CustomException if product not found.
+        /// </summary>
+        /// <returns></returns>
         public async Task ReplicateProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
             if (string.IsNullOrEmpty(serviceToReplicate))
@@ -46,6 +51,10 @@ namespace nopCommerceReplicatorServices.CommandOptions
             }
         }
 
+        /// <summary>
+        /// Updates the inventory of a product in nopCommerce asynchronously.
+        /// If the data has been previously bound do nothing. Throw CustomException if product not found.
+        /// </summary>
         public async Task ReplicateProductInventoryAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
             if (string.IsNullOrEmpty(serviceToReplicate))
@@ -67,6 +76,30 @@ namespace nopCommerceReplicatorServices.CommandOptions
                 Console.WriteLine($"Replicate product inventory with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
 
                 if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductInventoryAsync", response);
+            }
+        }
+
+        public async Task ReplicateProductAttributeSpecificationAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        {
+            if (string.IsNullOrEmpty(serviceToReplicate))
+            {
+                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
+                return;
+            }
+
+            using (var scope = serviceProvider.CreateScope())
+            {
+                // get customer service which is marked for replication
+                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+
+                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                IAttributeSpecificationSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productService);
+
+                HttpResponseMessage response = await productNopCommerceService.UpdateProductAttributeSpecificationAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+
+                Console.WriteLine($"Replicate product attribute specification with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
+
+                if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductAttributeSpecificationAsync", response);
             }
         }
     }
