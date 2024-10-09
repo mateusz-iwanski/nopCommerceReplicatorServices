@@ -23,7 +23,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// <summary>
     /// Connect attribute specification with product
     /// </summary>
-    public class ProductSpecificationAttributeMappingNopCommerce
+    public class ProductSpecificationAttributeMappingNopCommerce : IProductSpecificationAttributeMapping
     {
         public string ServiceKeyName { get => "Product"; }
 
@@ -47,8 +47,10 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <param name="attributeSpecExternal">The external product attribute source dat</param>
         /// <param name="setService">The chosen service</param>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task CreateAsync(int productId, IAttributeSpecificationSourceData attributeSpecExternal, Service setService)
+        public async Task<List<HttpResponseMessage>> CreateAsync(int productId, IAttributeSpecificationSourceData attributeSpecExternal, Service setService)
         {
+
+            List<HttpResponseMessage> httpResponses = new List<HttpResponseMessage>();
 
             // get nopCommerce product id by external service product id
             var dataBindingService = _serviceProvider.GetRequiredService<DataBinding.DataBinding>();
@@ -58,6 +60,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
             var attributeSpecificationMapperDtoList = attributeSpecExternal.Get(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
 
+            // one product can have multiple attribute specifications
             foreach (var attributeSpecificationMapperDto in attributeSpecificationMapperDtoList)
             {
                 // create SpecificationAttribute with AttributeSpecificationOption and AttributeSpecificationGroup
@@ -76,8 +79,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 {
                     // if exists return
                     var existing = await GetByIdsAsync(productId, specificationAttributeOptionDto.Id);
-                    if (existing == null) 
-                    { 
+                    if (existing == null)
+                    {
 
                         // if not exists add new
                         var apiResponse = await _productSpecificationAttributeMappingService.CreateAsync(
@@ -94,6 +97,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
                         {
                             throw new Exceptions.CustomException($"Failed to link to product and specification attribute. {apiResponse.ReasonPhrase}");
                         }
+
+                        httpResponses.Add(apiResponse);
                     }
                 }
                 catch (Exception ex)
@@ -102,6 +107,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 }
 
             }
+
+            return httpResponses;
         }
 
         /// <summary>
