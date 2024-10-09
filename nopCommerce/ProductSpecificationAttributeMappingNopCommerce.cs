@@ -54,7 +54,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
             // get nopCommerce product id by external service product id
             var dataBindingService = _serviceProvider.GetRequiredService<DataBinding.DataBinding>();
-            var dataBinding = dataBindingService.GetKeyBinding(setService, ServiceKeyName, productId.ToString()) ?? ;
+            var dataBinding = dataBindingService.GetKeyBinding(setService, ServiceKeyName, productId.ToString()) ?? throw new CustomException("Product doesn't exist in nopCOmmerce");
 
             var attributeSpecificationService = _serviceProvider.GetService<AttributeSpecificationNopCommerce>();
 
