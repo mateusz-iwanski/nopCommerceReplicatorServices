@@ -92,14 +92,16 @@ namespace nopCommerceReplicatorServices.CommandOptions
                 // get customer service which is marked for replication
                 var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
 
-                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
-                IAttributeSpecificationSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productService);
+                IProductSpecificationAttributeMapping productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSpecificationAttributeMapping>>()("AttributeSpecificationNopCommerce");
+                IAttributeSpecificationSourceData attributeDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productService);
 
-                HttpResponseMessage response = await productNopCommerceService.UpdateProductAttributeSpecificationAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+                List<HttpResponseMessage> responses = await productNopCommerceService.CreateAsync(repProductIdOption, attributeDataSourceService, Enum.Parse<Service>(serviceToReplicate));
 
-                Console.WriteLine($"Replicate product attribute specification with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
-
-                if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductAttributeSpecificationAsync", response);
+                foreach (var response in responses)
+                {
+                    Console.WriteLine($"Replicate product attribute specification with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
+                    if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductAttributeSpecificationAsync", response);
+                }
             }
         }
     }
