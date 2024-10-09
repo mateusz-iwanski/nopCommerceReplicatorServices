@@ -79,6 +79,10 @@ namespace nopCommerceReplicatorServices.CommandOptions
             }
         }
 
+        /// <summary>
+        /// Create attributes specifictaion for a product in nopCommerce asynchronously.
+        /// If the data has been previously bound do nothing. Throw CustomException if product not found.
+        /// </summary>
         public async Task ReplicateProductAttributeSpecificationAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
             if (string.IsNullOrEmpty(serviceToReplicate))
@@ -89,11 +93,11 @@ namespace nopCommerceReplicatorServices.CommandOptions
 
             using (var scope = serviceProvider.CreateScope())
             {
-                // get customer service which is marked for replication
-                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+                // get attribute specification external service which is marked for replication
+                var productAttributeService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Attribute");
 
                 IProductSpecificationAttributeMapping productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSpecificationAttributeMapping>>()("AttributeSpecificationNopCommerce");
-                IAttributeSpecificationSourceData attributeDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productService);
+                IAttributeSpecificationSourceData attributeDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productAttributeService);
 
                 List<HttpResponseMessage> responses = await productNopCommerceService.CreateAsync(repProductIdOption, attributeDataSourceService, Enum.Parse<Service>(serviceToReplicate));
 
