@@ -55,7 +55,7 @@ namespace nopCommerceReplicatorServices
             services.AddScoped<AttributeSpecificationNopCommerce>();
             services.AddScoped<AttributeSpecificationOptionNopCommerce>();
             services.AddScoped<AttributeSpecificationGroupNopCommerce>();
-            services.AddScoped<ProductSpecificationAttributeMappingNopCommerce>();
+            services.AddScoped<IProductSpecificationAttributeMapping, ProductSpecificationAttributeMappingNopCommerce>();
 
             services.AddScoped<ITax, TaxNopCommerce>();
 
@@ -65,7 +65,7 @@ namespace nopCommerceReplicatorServices
 
             services.AddScoped<CustomerDjango>();
             services.AddScoped<AttributeSpecificationDjango>();
-
+                
 
             // utils
             services.AddScoped<DataBinding.DataBinding>();
@@ -92,18 +92,7 @@ namespace nopCommerceReplicatorServices
                     "ProductNopCommerce" => serviceProvider.GetService<ProductNopCommerce>() as IProduct,
                     _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
-            });
-
-            services.AddScoped<Func<string, IProductSpecificationAttributeMapping>>(serviceProvider => key =>
-            {
-                return key switch
-                {
-                    "AttributeSpecificationNopCommerce" => serviceProvider.GetService<AttributeSpecificationDjango>() as IProductSpecificationAttributeMapping,
-                    //"ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
-                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
-                };
-            });
-
+            });            
 
             // source customer services
             services.AddScoped<Func<string, ICustomerSourceData>>(serviceProvider => key =>
@@ -131,7 +120,7 @@ namespace nopCommerceReplicatorServices
             {
                 return key switch
                 {
-                    "AttributeSpecificationGT" => serviceProvider.GetService<AttributeSpecificationDjango>() as IAttributeSpecificationSourceData,
+                    "AttributeSpecificationDjango" => serviceProvider.GetService<AttributeSpecificationDjango>() as IAttributeSpecificationSourceData,
                     //"ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
                     _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
