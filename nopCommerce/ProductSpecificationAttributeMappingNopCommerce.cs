@@ -86,7 +86,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 try
                 {
                     // if exists return
-                    var existing = await GetByIdsAsync(productId, specificationAttributeOptionDto.Id);
+                    var existing = await GetByIdsAsync(dataBinding.NopCommerceId, specificationAttributeOptionDto.Id);
                     if (existing == null)
                     {
 
@@ -101,7 +101,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                                 DisplayOrder = 0
                             });
 
-                        if (apiResponse.StatusCode != HttpStatusCode.OK)
+                        if (apiResponse.StatusCode >= HttpStatusCode.BadRequest)
                         {
                             throw new Exceptions.CustomException($"Failed to link to product and specification attribute. {apiResponse.ReasonPhrase}");
                         }
