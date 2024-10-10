@@ -105,14 +105,20 @@ namespace nopCommerceReplicatorServices.CommandOptions
                 
                 if (responses == null)
                 {
-                    Console.WriteLine($"Attribute addition failed. Product ID: {repProductIdOption} does not have any attributes in the external service {serviceToReplicate}.");
+                    Console.WriteLine($"Attribute addition failed. External product ID: {repProductIdOption} does not have any attributes in the external service {serviceToReplicate}.");
+                    return;
+                }
+
+                if (responses.Count == 0)
+                {
+                    Console.WriteLine($"External product ID: {repProductIdOption} has already added all attributes from the external service {serviceToReplicate} in nopCommerce.");
                     return;
                 }
 
                 foreach (var response in responses)
                 {
                     Console.WriteLine($"Replicate product attribute specification with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
-                    if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductAttributeSpecificationAsync", response);
+                    if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductSpecificationAttributeMappingNopCommerce>("CreateAsync", response);
                 }
             }
         }
