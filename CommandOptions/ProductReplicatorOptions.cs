@@ -94,12 +94,20 @@ namespace nopCommerceReplicatorServices.CommandOptions
             using (var scope = serviceProvider.CreateScope())
             {
                 // get attribute specification external service which is marked for replication
-                var productAttributeService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Attribute");
+                var productAttributeService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Attribute") ?? 
+                    throw new CustomException($"In configuration not set Service with section {serviceToReplicate} and Attribute");
 
-                IProductSpecificationAttributeMapping productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSpecificationAttributeMapping>>()("AttributeSpecificationNopCommerce");
                 IAttributeSpecificationSourceData attributeDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productAttributeService);
 
-                List<HttpResponseMessage> responses = await productNopCommerceService.CreateAsync(repProductIdOption, attributeDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+                var productSpecificationAttributeMappingNopCommerce = scope.ServiceProvider.GetRequiredService<IProductSpecificationAttributeMapping>();
+
+                List<HttpResponseMessage>? responses = await productSpecificationAttributeMappingNopCommerce.CreateAsync(repProductIdOption, attributeDataSourceService);
+                
+                if (responses == null)
+                {
+                    Console.WriteLine($"Attribute addition failed. Product ID: {repProductIdOption} does not have any attributes in the external service {serviceToReplicate}.");
+                    return;
+                }
 
                 foreach (var response in responses)
                 {
