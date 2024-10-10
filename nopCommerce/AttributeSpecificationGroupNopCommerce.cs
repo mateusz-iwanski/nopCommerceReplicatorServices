@@ -47,7 +47,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
                 // if not exists add new
                 var apiResponse = await _specificationAttributeGroupApi.CreateAsync(attributeSpecificationGroupNopCommerce);
-                if (apiResponse.StatusCode != HttpStatusCode.OK)
+                if (apiResponse.StatusCode >= HttpStatusCode.BadRequest)
                 {
                     throw new Exceptions.CustomException($"Failed to create a new specification attribute group. {apiResponse.ReasonPhrase}");
                 }
