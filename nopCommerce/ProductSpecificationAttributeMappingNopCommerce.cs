@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Formats.Asn1.AsnWriter;
@@ -43,22 +44,29 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// Look on GetByIds, if checking over product ID and the specification attribute option ID is 
         /// not enough, change it.
         /// </remarks>
-        /// <param name="productId">The ID of the product from external service</param>
+        /// <param name="productId">The ID of the product from SubiektGT service</param>
         /// <param name="attributeSpecExternal">The external product attribute source dat</param>
         /// <param name="setService">The chosen service</param>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<List<HttpResponseMessage>> CreateAsync(int productId, IAttributeSpecificationSourceData attributeSpecExternal, Service setService)
+        public async Task<List<HttpResponseMessage>>? CreateAsync(int productId, IAttributeSpecificationSourceData attributeSpecExternal)
         {
-
             List<HttpResponseMessage> httpResponses = new List<HttpResponseMessage>();
 
             // get nopCommerce product id by external service product id
             var dataBindingService = _serviceProvider.GetRequiredService<DataBinding.DataBinding>();
-            var dataBinding = dataBindingService.GetKeyBinding(setService, ServiceKeyName, productId.ToString()) ?? throw new CustomException("Product doesn't exist in nopCOmmerce");
+
+            // Set service SubiektGT because we need to have nopCommerce id of the product
+            // When we add product from Subiekt GT we bind ids by SubiektGT not by Django
+            // Replicator from Django to nopCommerce never will work
+            var dataBinding = dataBindingService.GetKeyBinding(Service.SubiektGT, ServiceKeyName, productId.ToString()) ?? throw new CustomException("Product doesn't exist in nopCOmmerce");
 
             var attributeSpecificationService = _serviceProvider.GetService<AttributeSpecificationNopCommerce>();
 
-            var attributeSpecificationMapperDtoList = attributeSpecExternal.Get(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
+            var attributeSpecificationMapperDtoList = attributeSpecExternal.Get(productId);
+            if (attributeSpecificationMapperDtoList == null)
+            {
+                return null;
+            }
 
             // one product can have multiple attribute specifications
             foreach (var attributeSpecificationMapperDto in attributeSpecificationMapperDtoList)
