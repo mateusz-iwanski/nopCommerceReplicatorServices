@@ -1,4 +1,5 @@
-﻿using nopCommerceReplicatorServices.Actions;
+﻿using Microsoft.Extensions.Configuration;
+using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceWebApiClient.Interfaces;
@@ -17,12 +18,14 @@ namespace nopCommerceReplicatorServices.SubiektGT
 {
     public class ProductGt : IProductSourceData
     {
-        private DBConnector dbConnector { get; set; }
-        private ITax _tax { get; set; }
+        private readonly DBConnector dbConnector;
+        private readonly ITax _tax;
+        private readonly IConfiguration _configuration;
 
-        public ProductGt(ITax tax)
+        public ProductGt(ITax tax, IConfiguration configuration)
         {
             _tax = tax;
+            _configuration = configuration;
 
             dbConnector = new DBConnector("SubiektGTConnection", "mssql");
             dbConnector.Initialize();
@@ -31,6 +34,12 @@ namespace nopCommerceReplicatorServices.SubiektGT
 
         public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
         {
+            // get price level from settings file
+            var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") ??
+                throw new CustomException("Can't read from settings Service->SubiektGT->UsagePriceLevel");
+
+            PriceLevelGT priceLevelGT = (PriceLevelGT)Enum.Parse(typeof(PriceLevelGT), usagePriceLevel);
+
             var products = await GetAsync("tw_Id", customerId.ToString());
             return products?.FirstOrDefault();
         }
@@ -40,11 +49,13 @@ namespace nopCommerceReplicatorServices.SubiektGT
         /// </summary>
         /// <param name="fieldName">The field name to query by.</param>
         /// <param name="fieldValue">The field value to query by.</param>
-        /// <param name="priceLevel">Price levels to be shown. By default this is the retail price.</param>
         /// <returns>A ProductDto object if found; otherwise, null.</returns>
-        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
+        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue)
         {
             List<ProductCreateMinimalDto> products = new List<ProductCreateMinimalDto>();
+
+            var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") ??
+                throw new CustomException("Can't read from settings Service->SubiektGT->UsagePriceLevel");
 
             var vat = await _tax.GetCategoryByNameAsync((VatLevel)23);
 
@@ -54,7 +65,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
                         tw_Id,
                         tw_Nazwa,
                         tw_Symbol,
-                        {priceLevel.ToString()},
+                        {usagePriceLevel},
                         tw_Opis,
                         tw_DostSymbol,
                         tw_PodstKodKresk,
@@ -83,7 +94,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
                     int id = reader.GetInt32(reader.GetOrdinal("tw_Id"));
                     string? name = reader.IsDBNull("tw_Nazwa") ? null : reader.GetString(reader.GetOrdinal("tw_Nazwa"));
                     string? sku = reader.IsDBNull("tw_Symbol") ? null : reader.GetString(reader.GetOrdinal("tw_Symbol"));
-                    decimal price = reader.GetDecimal(reader.GetOrdinal(priceLevel.ToString()));
+                    decimal price = reader.GetDecimal(reader.GetOrdinal(usagePriceLevel));
                     string? shortDesctiprion = reader.IsDBNull("tw_Opis") ? null : reader.GetString(reader.GetOrdinal("tw_Opis"));
                     string? supplierSymbol = reader.IsDBNull("tw_DostSymbol") ? null : reader.GetString(reader.GetOrdinal("tw_DostSymbol"));
                     string? gtin = reader.IsDBNull("tw_PodstKodKresk") ? null : reader.GetString(reader.GetOrdinal("tw_PodstKodKresk"));
@@ -192,16 +203,18 @@ namespace nopCommerceReplicatorServices.SubiektGT
         /// Get the product's price from Subiekt GT, set the remaining available properties as default values.
         /// </summary>
         /// <param name="productId">Subiekt GT product ID</param>
-        /// <param name="priceLevel">Price levels to be shown. By default this is the retail price.</param>
         /// <returns></returns>
-        public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId, PriceLevelGT priceLevel)
+        public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId)
         {
             ProductUpdateBlockPriceDto productPrice = null;
+
+            var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") ??
+                throw new CustomException("Can't read from settings Service->SubiektGT->UsagePriceLevel");
 
             var query =
                 $@"
                     SELECT 
-                        {priceLevel.ToString()},
+                        {usagePriceLevel},
                         vat_Stawka
                     FROM tw__Towar 
                     INNER JOIN tw_Cena on tw_Id = tc_IdTowar  
@@ -219,7 +232,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
                 while (reader.Read())
                 {
 
-                    decimal price = reader.GetDecimal(reader.GetOrdinal(priceLevel.ToString()));
+                    decimal price = reader.GetDecimal(reader.GetOrdinal(usagePriceLevel));
                     decimal vatValue = reader.GetDecimal(reader.GetOrdinal("vat_Stawka"));
 
                     productPrice = new ProductUpdateBlockPriceDto
