@@ -20,7 +20,8 @@ namespace nopCommerceReplicatorServices.CommandOptions
             using (var scope = serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
-                var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer");
+                var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer") ??
+                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Customer not exists"); 
 
                 ICustomer customerNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomer>>()("CustomerNopCommerce");
                 ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);
