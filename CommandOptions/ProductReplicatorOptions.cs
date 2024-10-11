@@ -22,7 +22,8 @@ namespace nopCommerceReplicatorServices.CommandOptions
             using (var scope = serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
-                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists"); 
 
                 IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
                 IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
@@ -54,7 +55,8 @@ namespace nopCommerceReplicatorServices.CommandOptions
             using (var scope = serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
-                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists");
 
                 IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
                 IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
