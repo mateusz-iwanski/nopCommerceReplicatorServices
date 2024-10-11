@@ -17,12 +17,6 @@ namespace nopCommerceReplicatorServices.CommandOptions
     {
         public async Task ReplicateCustomerAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repCustomerId, bool showDetailsOption)
         {
-            if (string.IsNullOrEmpty(serviceToReplicate))
-            {
-                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
-                return;
-            }
-
             using (var scope = serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
