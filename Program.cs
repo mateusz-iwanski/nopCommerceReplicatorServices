@@ -74,13 +74,16 @@ internal partial class Program
         Service service;
 
         // if an external service is selected, check if it exists in the list of enum services
-        if (!string.IsNullOrEmpty(args.ServiceToReplicate))
+        if (string.IsNullOrEmpty(args.ServiceToReplicate))
         {
-            if (!Enum.TryParse<Service>(args.ServiceToReplicate, out service))
-            {
-                Console.WriteLine($"Invalid service to replicate: {args.ServiceToReplicate}");
-                return;
-            }
+            Console.WriteLine($"Invalid service to replicate: {args.ServiceToReplicate}. Use --external_service to set up a service for replication.");
+            return;
+        }
+
+        if (!Enum.TryParse<Service>(args.ServiceToReplicate, out service))
+        {
+            Console.WriteLine($"Invalid service to replicate: {args.ServiceToReplicate}. Use --external_service to set up a service for replication.");
+            return;
         }
 
         // show help
