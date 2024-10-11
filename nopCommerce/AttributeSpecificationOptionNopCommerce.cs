@@ -16,7 +16,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// <summary>
     /// Option for attribute specification
     /// 
-    /// For example: Red, Black, Left corner etc.
+    /// For example: Color, Opening angle, etc.
     /// </summary>
     public class AttributeSpecificationOptionNopCommerce
     {
