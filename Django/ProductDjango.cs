@@ -1,4 +1,6 @@
-﻿using nopCommerceReplicatorServices.Actions;
+﻿using Microsoft.Extensions.Configuration;
+using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.Exceptions;
 using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient.Objects.Product;
 using System;
@@ -16,8 +18,8 @@ namespace nopCommerceReplicatorServices.Django
     /// </summary>
     public class ProductDjango : IProductSourceData
     {
-        private DBConnector dbConnector { get; set; }
-
+        private readonly DBConnector _dbConnector;
+        private readonly IConfiguration _configuration;
         private ITax _tax { get; set; }
 
         private string _productMainQuery = $@"
@@ -58,19 +60,27 @@ namespace nopCommerceReplicatorServices.Django
                     gtv_api_catalog_link
                 FROM public.catalogue_product";
 
-        public ProductDjango(ITax tax)
+        public ProductDjango(ITax tax, IConfiguration configuration)
         {
-            dbConnector = new DBConnector("Django", "postgresql");
+            _dbConnector = new DBConnector("Django", "postgresql");
 
             _tax = tax;
 
-            dbConnector.Initialize();
+            _configuration = configuration;
+
+            _dbConnector.Initialize();
             return;
         }
 
         public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
         {
-            var products = await GetAsync("id", customerId.ToString());
+            // get price level from settings file
+            var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") 
+                ?? throw new CustomException("Can't read from settings Service->SubiektGT->UsagePriceLevel");
+
+            PriceLevelGT priceLevelGT = (PriceLevelGT)Enum.Parse(typeof(PriceLevelGT), usagePriceLevel);
+
+            var products = await GetAsync("id", customerId.ToString(), priceLevelGT);
             return products?.FirstOrDefault();
         }
 
@@ -84,20 +94,20 @@ namespace nopCommerceReplicatorServices.Django
         /// <returns>new ProductUpdateBlockInventoryDto</returns>
         public async Task<ProductUpdateBlockInventoryDto>? GetInventoryByIdAsync(int productId)
         {
-            var productGt = new ProductGt(_tax);
+            var productGt = new ProductGt(_tax, _configuration);
             return await productGt.GetInventoryByIdAsync(productId);
         }
 
-        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel = PriceLevelGT.tc_CenaNetto1)
+        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel)
         {
 
             List<ProductCreateMinimalDto> products = new List<ProductCreateMinimalDto>();
 
             var query = _productMainQuery + $" WHERE {fieldName} = '{fieldValue}';";
 
-            dbConnector.OpenConnection();
+            _dbConnector.OpenConnection();
 
-            dbConnector.ExecuteQuery(query, async (reader) =>
+            _dbConnector.ExecuteQuery(query, async (reader) =>
             {
                 while (reader.Read())
                 {
@@ -140,9 +150,9 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            await FillInDataByApiAsync(products, priceLevel);
+            await FillInDataByApiAsync(products);
 
-            dbConnector.CloseConnection();
+            _dbConnector.CloseConnection();
 
             return products;
         }
@@ -153,10 +163,10 @@ namespace nopCommerceReplicatorServices.Django
         /// <param name="productId">Subiekt GT product ID</param>
         /// <param name="priceLevel">Price levels to be shown. By default this is the retail price.</param>
         /// <returns></returns>
-        public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId, PriceLevelGT priceLevel)
+        public async Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId)
         {
-            var productGt = new ProductGt(_tax);
-            var priceBlock = await productGt.GetProductPriceByIdAsync(productId, priceLevel);            
+            var productGt = new ProductGt(_tax, _configuration);
+            var priceBlock = await productGt.GetProductPriceByIdAsync(productId);            
             return priceBlock;
         }
 
@@ -168,14 +178,14 @@ namespace nopCommerceReplicatorServices.Django
         /// We can't do that from web api when we use DbDataReader because is not async.
         /// </remarks>
         /// <returns>Completed product data</returns>
-        private async Task FillInDataByApiAsync(List<ProductCreateMinimalDto> productList, PriceLevelGT priceLevel)
+        private async Task FillInDataByApiAsync(List<ProductCreateMinimalDto> productList)
         {
             
 
             for (int i = 0; i < productList.Count; i++)
             {
                 var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList[i].VatValue);
-                var priceBlock = await GetProductPriceByIdAsync(productList[i].SubiektGtId ?? 0, priceLevel);
+                var priceBlock = await GetProductPriceByIdAsync(productList[i].SubiektGtId ?? 0);
                 var price = priceBlock != null ? priceBlock.Price : 0;
 
                 productList[i] = productList[i] with { TaxCategoryId = taxCategoryId, Price = price };
@@ -204,9 +214,9 @@ namespace nopCommerceReplicatorServices.Django
 				    where attrgr.name like '{productAttributeName}' and catalogue_product.id = {productId};
                 ";
 
-            dbConnector.OpenConnection();
+            _dbConnector.OpenConnection();
 
-            dbConnector.ExecuteQuery(query, (reader) =>
+            _dbConnector.ExecuteQuery(query, (reader) =>
             {
                 while (reader.Read())
                 {
