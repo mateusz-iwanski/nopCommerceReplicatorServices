@@ -13,12 +13,6 @@ namespace nopCommerceReplicatorServices.CommandOptions
     {
         public async Task ShowProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int shProductIdOption, bool showDetailsOption)
         {
-            if (string.IsNullOrEmpty(serviceToReplicate))
-            {
-                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
-                return;
-            }
-
             var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
 
             using (var scope = serviceProvider.CreateScope())
