@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using nopCommerceReplicatorServices.Exceptions;
 using nopCommerceReplicatorServices.Services;
 using System;
 using System.Collections.Generic;
@@ -16,7 +17,8 @@ namespace nopCommerceReplicatorServices.CommandOptions
             Console.WriteLine($"Show customer with ID: {shCustomerId}.");
 
             // get customer service which is marked for replication
-            var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer");
+            var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer") ??
+                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Customer not exists"); 
 
             using (var scope = serviceProvider.CreateScope())
             {
