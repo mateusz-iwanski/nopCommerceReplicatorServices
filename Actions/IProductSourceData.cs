@@ -16,6 +16,6 @@ namespace nopCommerceReplicatorServices.Actions
     {
         Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId);
         Task<ProductUpdateBlockInventoryDto>? GetInventoryByIdAsync(int customerId);
-        Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId, PriceLevelGT priceLevel);
+        Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId);
     }
 }
