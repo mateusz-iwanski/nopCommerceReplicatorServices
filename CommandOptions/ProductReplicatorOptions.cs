@@ -19,12 +19,6 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// <returns></returns>
         public async Task ReplicateProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
-            if (string.IsNullOrEmpty(serviceToReplicate))
-            {
-                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
-                return;
-            }
-
             using (var scope = serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
@@ -57,12 +51,6 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// </summary>
         public async Task ReplicateProductInventoryAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
-            if (string.IsNullOrEmpty(serviceToReplicate))
-            {
-                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
-                return;
-            }
-
             using (var scope = serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
@@ -85,12 +73,6 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// </summary>
         public async Task ReplicateProductAttributeSpecificationAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
         {
-            if (string.IsNullOrEmpty(serviceToReplicate))
-            {
-                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
-                return;
-            }
-
             using (var scope = serviceProvider.CreateScope())
             {
                 // get attribute specification external service which is marked for replication
