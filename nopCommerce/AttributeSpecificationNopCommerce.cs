@@ -40,8 +40,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// Create a new specification attribute with group and value. If exists return it.
         /// </summary>
         /// <param name="groupName">Product, Accessories, Board etc.</param>        
-        /// <param name="value">Color, Opening angle, etc.</param>
-        /// <param name="optionName">Red, Black, Left corner etc.</param>
+        /// <param name="optionName">Color, Opening angle, etc.</param>
+        /// <param name="value">Red, Black, Left corner etc.</param>        
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
         public async Task<SpecificationAttributeDto> CreateSetAsync(string groupName, string value, string optionName)
