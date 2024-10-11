@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,8 @@ namespace nopCommerceReplicatorServices.CommandOptions
     {
         public async Task ShowProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int shProductIdOption, bool showDetailsOption)
         {
-            var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product");
+            var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists"); 
 
             using (var scope = serviceProvider.CreateScope())
             {
