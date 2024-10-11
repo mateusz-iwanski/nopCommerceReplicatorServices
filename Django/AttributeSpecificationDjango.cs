@@ -55,8 +55,8 @@ namespace nopCommerceReplicatorServices.Django
                 {
                     var attributeSpecfification = new AttributeSpecificationMapperDto(
                         "Product",
-                        reader.GetString(reader.GetOrdinal("value")),
-                        reader.GetString(reader.GetOrdinal("name"))
+                        reader.GetString(reader.GetOrdinal("value")).ToUpper(),
+                        reader.GetString(reader.GetOrdinal("name")).ToUpper()
                         );
 
                     attributeSpecfificationList.Add(attributeSpecfification);
