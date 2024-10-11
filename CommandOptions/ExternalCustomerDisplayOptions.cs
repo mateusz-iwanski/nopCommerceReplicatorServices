@@ -13,12 +13,6 @@ namespace nopCommerceReplicatorServices.CommandOptions
     {
         public async Task ShowCustomerAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int shCustomerId, bool showDetailsOption)
         {
-            if (string.IsNullOrEmpty(serviceToReplicate))
-            {
-                Console.WriteLine("Invalid or missing service to replicate. Use replicate_service to set up a service for replication.");
-                return;
-            }
-
             Console.WriteLine($"Show customer with ID: {shCustomerId}.");
 
             // get customer service which is marked for replication
