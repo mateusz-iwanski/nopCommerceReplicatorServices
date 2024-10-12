@@ -20,5 +20,6 @@ namespace nopCommerceReplicatorServices
         public int RepProductIdOption { get; set; }
         public int RepInventoryProductIdOption { get; set; }
         public int RepAttributeSpecificationProductIdOption { get; set; }
+        public int RepProducPricetIdOption { get; set; }
     }   
 }
