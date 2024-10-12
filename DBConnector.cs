@@ -3,7 +3,8 @@ using System;
 using System.Data.Common;
 using System.IO;
 using Npgsql; // For PostgreSQL
-using System.Data.SqlClient; // For MSSQL
+using System.Data.SqlClient;
+using nopCommerceReplicatorServices.Exceptions; // For MSSQL
 
 namespace nopCommerceReplicatorServices
 {
@@ -28,7 +29,9 @@ namespace nopCommerceReplicatorServices
                 .AddJsonFile("settings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            _connectionString = configuration.GetSection("DbConnectionStrings").GetValue<string>(connectionStringFromSettings);
+            _connectionString = configuration.GetSection("DbConnectionStrings").GetValue<string>(connectionStringFromSettings) ??
+                    throw new CustomException($"In configuration DbConnectionStrings->{connectionStringFromSettings} not exists"); 
+
             _dbType = dbType;
 
             if (string.IsNullOrEmpty(_connectionString))
