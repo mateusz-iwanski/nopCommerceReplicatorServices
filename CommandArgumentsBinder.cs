@@ -23,6 +23,7 @@ namespace nopCommerceReplicatorServices
         private readonly Option<int> _repProductIdOption;
         private readonly Option<int> _repInventoryProductIdOption;
         private readonly Option<int> _repAttributeSpecificationProductIdOption;
+        private readonly Option<int> _repProducPricetIdOption;        
 
         public CommandArgumentsBinder(
             Option<int> repCustomerIdOption,
@@ -33,7 +34,8 @@ namespace nopCommerceReplicatorServices
             Option<int> shProductIdOption,
             Option<int> repProductIdOption,
             Option<int> repInventoryProductIdOption,
-            Option<int> repAttributeSpecificationProductIdOption
+            Option<int> repAttributeSpecificationProductIdOption,
+            Option<int> repProducPricetIdOption
         )
         {
             _repCustomerIdOption = repCustomerIdOption;
@@ -45,6 +47,7 @@ namespace nopCommerceReplicatorServices
             _repProductIdOption = repProductIdOption;
             _repInventoryProductIdOption = repInventoryProductIdOption;
             _repAttributeSpecificationProductIdOption = repAttributeSpecificationProductIdOption;
+            _repProducPricetIdOption = repProducPricetIdOption;
         }
 
         protected override CommandArguments GetBoundValue(BindingContext bindingContext)
@@ -59,7 +62,8 @@ namespace nopCommerceReplicatorServices
                 ShProductIdOption = bindingContext.ParseResult.GetValueForOption(_shProductIdOption),
                 RepProductIdOption = bindingContext.ParseResult.GetValueForOption(_repProductIdOption),
                 RepInventoryProductIdOption = bindingContext.ParseResult.GetValueForOption(_repInventoryProductIdOption),
-                RepAttributeSpecificationProductIdOption = bindingContext.ParseResult.GetValueForOption(_repAttributeSpecificationProductIdOption)
+                RepAttributeSpecificationProductIdOption = bindingContext.ParseResult.GetValueForOption(_repAttributeSpecificationProductIdOption),
+                RepProducPricetIdOption = bindingContext.ParseResult.GetValueForOption(_repProducPricetIdOption)
             };
         }
     }
