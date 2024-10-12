@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using nopCommerceReplicatorServices.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,8 @@ namespace nopCommerceReplicatorServices.DataBinding
         {
             var configuration = _serviceProvider.GetRequiredService<IConfiguration>();
 
-            _connectionString = configuration.GetSection("DbConnectionStrings").GetValue<string>("KeyBinding");
+            _connectionString = configuration.GetSection("DbConnectionStrings").GetValue<string>("KeyBinding") ??
+                    throw new CustomException($"In configuration DbConnectionStrings->KeyBinding not exists"); 
 
             optionsBuilder.UseSqlServer(_connectionString);
         }
