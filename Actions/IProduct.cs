@@ -27,7 +27,9 @@ namespace nopCommerceReplicatorServices.Actions
         /// </summary>
         /// <param name="productId">The ID of the product from external service.</param>
         /// <param name="productExternal">The external product source data.</param>         
-        /// <returns>The HTTP response message. Throw CustomException when product not found.</returns>
+        /// <returns>The HTTP response message. Throw CustomException when product not found in external service, source service or hasn't been replicated yet.</returns>
         Task<HttpResponseMessage> UpdateProductInventoryAsync(int productId, IProductSourceData productExternal, Service setService);
+
+        Task<HttpResponseMessage> UpdateProductPriceAsync(int productId, IProductSourceData productExternal, Service setService);
     }
 }
