@@ -22,6 +22,7 @@ internal partial class Program
         var repProductIdOption = new Option<int>("--replicate_product", "The product ID from the external service to be replicated.");
         var repInventoryProductIdOption = new Option<int>("--replicate_product_inventory", "The product ID from the external service to be replicated.");
         var repAttributeSpecificationProductIdOption = new Option<int>("--replicate_product_attribute", "The product ID from the external service to be replicated.");
+        var repProducPricetIdOption = new Option<int>("--replicate_product_price", "The product ID from the external service to be replicated.");
         var helpOption = new Option<bool>("--help", "Show help information");
         var showDetailsOption = new Option<bool>("--show_details", "Show details output");
         var serviceToReplicate = new Option<string>("--external_service", $"Set external service to use. Available services - {string.Join(',', Enum.GetNames(typeof(Service)))}");
@@ -36,6 +37,7 @@ internal partial class Program
             repProductIdOption,
             repInventoryProductIdOption,
             repAttributeSpecificationProductIdOption,
+            repProducPricetIdOption,
             helpOption,
             showDetailsOption
         };
@@ -56,7 +58,8 @@ internal partial class Program
                 shProductIdOption,
                 repProductIdOption,
                 repInventoryProductIdOption,
-                repAttributeSpecificationProductIdOption
+                repAttributeSpecificationProductIdOption,
+                repProducPricetIdOption
             )
         );
 
@@ -137,6 +140,15 @@ internal partial class Program
             var commandLine = new ProductReplicatorOptions();
             await commandLine.ReplicateProductAttributeSpecificationAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepAttributeSpecificationProductIdOption, args.ShowDetailsOption);
         }
+
+        // replicate product price from external service
+        if (args.RepProducPricetIdOption > 0)
+        {
+            var commandLine = new ProductReplicatorOptions();
+            await commandLine.ReplicateProductPriceAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepProducPricetIdOption, args.ShowDetailsOption);
+        }
+
+        
     }
 
     public static IHostBuilder CreateHostBuilder(string[] args) =>
