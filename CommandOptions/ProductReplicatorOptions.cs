@@ -106,5 +106,28 @@ namespace nopCommerceReplicatorServices.CommandOptions
                 }
             }
         }
+
+
+        /// <summary>
+        /// Updates price for a product in nopCommerce asynchronously.
+        /// </summary>
+        public async Task ReplicateProductPriceAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        {
+            using (var scope = serviceProvider.CreateScope())
+            {
+                // get customer service which is marked for replication
+                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists");
+
+                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
+
+                HttpResponseMessage response = await productNopCommerceService.UpdateProductPriceAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+
+                Console.WriteLine($"Replicate product price with ID: {repProductIdOption} --- Status code: {(int)response.StatusCode} ({response.StatusCode}).");
+
+                if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("UpdateProductPriceAsync", response);
+            }
+        }        
     }
 }
