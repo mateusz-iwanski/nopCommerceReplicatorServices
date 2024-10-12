@@ -56,9 +56,9 @@ namespace nopCommerceReplicatorServices.nopCommerce
             var dataBindingService = _serviceProvider.GetRequiredService<DataBinding.DataBinding>();
 
             // Set service SubiektGT because we need to have nopCommerce id of the product
-            // When we add product from Subiekt GT we bind ids by SubiektGT not by Django
-            // Replicator from Django to nopCommerce never will work
-            var dataBinding = dataBindingService.GetKeyBinding(Service.SubiektGT, ServiceKeyName, productId.ToString()) ?? 
+            // When we add product from Subiekt GT (main service) we bind ids by SubiektGT not by Django
+            // Only main service can add and link products, rest of external services just update data.
+            var dataBinding = dataBindingService.GetKeyBinding((Service)0, ServiceKeyName, productId.ToString()) ?? 
                 throw new UnreplicatedDataException("Product doesn't exist in nopCommerce");
 
             var attributeSpecificationService = _serviceProvider.GetService<AttributeSpecificationNopCommerce>();
