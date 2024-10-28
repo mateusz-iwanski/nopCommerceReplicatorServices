@@ -11,23 +11,25 @@ namespace nopCommerceReplicatorServices.DataBinding
     /// <remarks>
     /// For example:
     /// When adding a new customer to nopCommerce - adding a new KeyBinding object to the database.
-    /// When you update a client in nopCommerce - look for the ServiceKey, read the NopCommerceId and update it
+    /// When you update a client in nopCommerce - look for the BindendObject, read the NopCommerceId and update it
     /// </remarks>
     public class DataBindingEntity
     {
         public int Id { get; set; }
 
         // for ex. SubiektGT, Django, etc.
-        public string ServiceName { get; set; }
+        public Service Service { get; set; }
 
         // for ex. customer, product, etc.  
-        public string ServiceKey { get; set; }
+        public ObjectToBind BindendObject { get; set; }
 
         // customer id, customer symbol, etc. (unique with ServiceName)
-        public string ServiceValue { get; set; }
+        public int ExternalId { get; set; }
 
         // nopCommerce customer id
-        public int NopCommerceId { get; set; }  
+        public int NopCommerceId { get; set; }
 
+        // if true replicate stock by product ExternalId from service ServiceName to nopCommerce
+        public bool IsStockReplicated { get; set; }
     }
 }
