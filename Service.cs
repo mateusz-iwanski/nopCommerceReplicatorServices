@@ -16,5 +16,6 @@ namespace nopCommerceReplicatorServices
     {
         SubiektGT = 0,
         Django,
+        GtvApi,  // GTV Api data from Firestore database
     }
 }
