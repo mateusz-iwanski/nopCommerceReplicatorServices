@@ -53,7 +53,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
             using (var scope = _serviceProvider.CreateScope())
             {
-                var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
+                using var dataBindingService = new DataBinding.DataBinding(_serviceProvider);
                 var randomPassword = Guid.NewGuid().ToString();
 
                 if (dataBindingService.GetKeyBindingByExternalId(setService, ObjectToBind.Customer, customerId) == null)
