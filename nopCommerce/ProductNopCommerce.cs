@@ -33,6 +33,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
         private readonly IServiceProvider _serviceProvider;
         private readonly IDtoMapper _dtoMapper;
 
+        public ProductNopCommerce() { return; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ProductNopCommerce"/> class.
         /// </summary>
@@ -59,19 +61,19 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <summary>
         /// Creates a product in nopCommerce from SubiektGT with minimal data.
         /// </summary>
-        /// <param name="productId">The ID of the product from external service.</param>
+        /// <param name="externalProductId">The ID of the product from external service.</param>
         /// <param name="productExternal">The external product source data.</param>
         /// <param name="setService">The chosen service.</param>
         /// <returns>The list of HTTP response messages. Null if the data has been previously bound. Throw CustomException if product not found</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<IEnumerable<HttpResponseMessage>>? CreateMinimalProductAsync(int productId, IProductSourceData productExternal, Service setService)
+        public async Task<IEnumerable<HttpResponseMessage>>? CreateMinimalProductAsync(int externalProductId, IProductSourceData productExternal, Service setService)
         {
-            ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
+            ProductCreateMinimalDto? product = await productExternal.GetByIdAsync(externalProductId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
 
             using var scope = _serviceProvider.CreateScope();
             var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
 
-            if (dataBindingService.GetKeyBinding(setService, ServiceKeyName, productId.ToString()) != null)
+            if (dataBindingService.GetKeyBindingByExternalId(setService, ObjectToBind.Product, externalProductId) != null)
             {
                 return null;
             }
@@ -86,7 +88,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 var newProductDtoFromResponse = JsonConvert.DeserializeObject<ProductDto>(productDtoString);
 
                 // bind data between nopCommerce and external services
-                dataBindingService.BindKey(newProductDtoFromResponse.Id, setService.ToString(), ServiceKeyName, productId.ToString());
+                dataBindingService.BindKey(newProductDtoFromResponse.Id, setService, ObjectToBind.Product, externalProductId);
 
                 // map the product data to the product block information DTO
                 var producInrmationBlockDto = _dtoMapper.Map<ProductUpdateBlockInformationDto, ProductDto>(newProductDtoFromResponse, new Dictionary<string, object> { { "Gtin", product.Gtin } });
@@ -104,19 +106,19 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <summary>
         /// Updates the inventory of a product in nopCommerce asynchronously.
         /// </summary>
-        /// <param name="productId">The ID of the product from external service.</param>
+        /// <param name="externalProductId">The ID of the product from external service.</param>
         /// <param name="productExternal">The external product source data.</param>   
         /// <param name="setService">The chosen service.</param>
         /// <returns>The HTTP response message. Throw UnreplicatedDataException when product not found in external service, source service or hasn't been replicated yet.</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<HttpResponseMessage> UpdateProductInventoryAsync(int productId, IProductSourceData productExternal, Service setService)
+        public async Task<HttpResponseMessage> UpdateProductInventoryAsync(int externalProductId, IProductSourceData productExternal, Service setService)
         {
             using var scope = _serviceProvider.CreateScope();
             var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();            
 
-            ProductUpdateBlockInventoryDto? productInventoryBlock = await productExternal.GetInventoryByIdAsync(productId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
+            ProductUpdateBlockInventoryDto? productInventoryBlock = await productExternal.GetInventoryByIdAsync(externalProductId) ?? throw new Exceptions.CustomException($"Product does not exist in the external service data");
             // get nopCommerce product id by external service product id
-            var dataBinding = dataBindingService.GetKeyBinding(setService, ServiceKeyName, productId.ToString()) ??
+            var dataBinding = dataBindingService.GetKeyBindingByExternalId(setService, ObjectToBind.Product, externalProductId) ??
                 throw new UnreplicatedDataException("Product hasn't been replicated yet.");
             
             ProductDto product = await GetProductByIdAsync(dataBinding.NopCommerceId) ?? throw new Exceptions.CustomException($"Product does not exist in the nopCommerce data. " +
@@ -135,22 +137,22 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <summary>
         /// Update product price in nopCommerce from external service.
         /// </summary>
-        /// <param name="productId">The ID of the product from external service.</param>
+        /// <param name="externalProductId">The ID of the product from external service.</param>
         /// <param name="productExternal">The external product source data.</param>   
         /// <param name="setService">The chosen service.</param>
         /// <returns>The HTTP response message. Throw UnreplicatedDataException when product not found in external service, source service or hasn't been replicated yet.</returns>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<HttpResponseMessage> UpdateProductPriceAsync(int productId, IProductSourceData productExternal, Service setService)
+        public async Task<HttpResponseMessage> UpdateProductPriceAsync(int externalProductId, IProductSourceData productExternal, Service setService)
         {
             using var scope = _serviceProvider.CreateScope();
             var dataBindingService = scope.ServiceProvider.GetRequiredService<DataBinding.DataBinding>();
 
             // get nopCommerce product id by external service product id
-            var dataBinding = dataBindingService.GetKeyBinding(setService, ServiceKeyName, productId.ToString()) ??
+            var dataBinding = dataBindingService.GetKeyBindingByExternalId(setService, ObjectToBind.Product, externalProductId) ??
                 throw new UnreplicatedDataException("Product hasn't been replicated yet.");
 
-            ProductUpdateBlockPriceDto? productPriceBlock = await productExternal.GetProductPriceByIdAsync(productId) ?? 
-                throw new Exceptions.CustomException($"Product with ID - {productId} does not exist in the external service data");
+            ProductUpdateBlockPriceDto? productPriceBlock = await productExternal.GetProductPriceByIdAsync(externalProductId) ?? 
+                throw new Exceptions.CustomException($"Product with ID - {externalProductId} does not exist in the external service data");
 
             var response = await _productApi.UpdateBlockPriceAsync(dataBinding.NopCommerceId, productPriceBlock);
 
