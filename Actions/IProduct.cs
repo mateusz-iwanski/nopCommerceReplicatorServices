@@ -31,5 +31,7 @@ namespace nopCommerceReplicatorServices.Actions
         Task<HttpResponseMessage> UpdateProductInventoryAsync(int productId, IProductSourceData productExternal, Service setService);
 
         Task<HttpResponseMessage> UpdateProductPriceAsync(int productId, IProductSourceData productExternal, Service setService);
+
+        Task<ProductDto?> GetProductByIdAsync(int productId);
     }
 }
