@@ -4,6 +4,6 @@ namespace nopCommerceReplicatorServices.Actions
 {
     public interface IAttributeSpecificationSourceData
     {
-        IEnumerable<AttributeSpecificationMapperDto>? Get(int productId);
+        IEnumerable<AttributeSpecificationMapperDto>? Get(int subiektGtProductId);
     }
 }
