@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.DataBinding
 {
-    internal class KeyBindingDbContext : DbContext
+    public class KeyBindingDbContext : DbContext
     {
         private IServiceProvider _serviceProvider { get; set; }
 
