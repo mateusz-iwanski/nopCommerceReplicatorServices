@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.SubiektGT
 {
-    public class ProductGt : IProductSourceData
+    public class ProductGt : IProductSourceData, IProductBaseSourceData
     {
         private readonly DBConnector dbConnector;
         private readonly ITax _tax;
@@ -32,7 +32,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
             return;
         }
 
-        public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
+        public async Task<ProductCreateMinimalDto>? GetByIdAsync(int productId)
         {
             // get price level from settings file
             var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") ??
@@ -40,7 +40,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
 
             PriceLevelGT priceLevelGT = (PriceLevelGT)Enum.Parse(typeof(PriceLevelGT), usagePriceLevel);
 
-            var products = await GetAsync("tw_Id", customerId.ToString());
+            var products = await GetAsync("tw_Id", productId.ToString());
             return products?.FirstOrDefault();
         }
 
