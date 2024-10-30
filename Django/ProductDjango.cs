@@ -72,7 +72,13 @@ namespace nopCommerceReplicatorServices.Django
             return;
         }
 
-        public async Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId)
+        /// <summary>
+        /// Get ProductCreateMinimalDto by product ID from Django-Oscar ecommerce.
+        /// </summary>
+        /// <param name="productId">The ID of the product from external service.</param>
+        /// <returns></returns>
+        /// <exception cref="CustomException"></exception>
+        public async Task<ProductCreateMinimalDto>? GetByIdAsync(int productId)
         {
             // get price level from settings file
             var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") 
@@ -80,7 +86,7 @@ namespace nopCommerceReplicatorServices.Django
 
             PriceLevelGT priceLevelGT = (PriceLevelGT)Enum.Parse(typeof(PriceLevelGT), usagePriceLevel);
 
-            var products = await GetAsync("id", customerId.ToString(), priceLevelGT);
+            var products = await GetAsync("id", productId.ToString(), priceLevelGT);
             return products?.FirstOrDefault();
         }
 
