@@ -11,7 +11,7 @@ namespace nopCommerceReplicatorServices.DataBinding
     /// <remarks>
     /// For example:
     /// When adding a new customer to nopCommerce - adding a new KeyBinding object to the database.
-    /// When you update a client in nopCommerce - look for the BindendObject, read the NopCommerceId and update it
+    /// When you update a client in nopCommerce - look for the BindedObject, read the NopCommerceId and update it
     /// </remarks>
     public class DataBindingEntity
     {
@@ -21,7 +21,7 @@ namespace nopCommerceReplicatorServices.DataBinding
         public Service Service { get; set; }
 
         // for ex. customer, product, etc.  
-        public ObjectToBind BindendObject { get; set; }
+        public ObjectToBind BindedObject { get; set; }
 
         // customer id, customer symbol, etc. (unique with ServiceName)
         public int ExternalId { get; set; }
@@ -31,5 +31,8 @@ namespace nopCommerceReplicatorServices.DataBinding
 
         // if true replicate stock by product ExternalId from service ServiceName to nopCommerce
         public bool IsStockReplicated { get; set; }
+
+        // if true replicate price by product ExternalId from service ServiceName to nopCommerce
+        public bool IsPriceReplicated { get; set; }
     }
 }
