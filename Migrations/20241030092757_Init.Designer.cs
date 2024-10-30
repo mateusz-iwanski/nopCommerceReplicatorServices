@@ -11,8 +11,8 @@ using nopCommerceReplicatorServices.DataBinding;
 namespace nopCommerceReplicatorServices.Migrations
 {
     [DbContext(typeof(KeyBindingDbContext))]
-    [Migration("20240830123939_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20241030092757_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,7 +24,7 @@ namespace nopCommerceReplicatorServices.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("nopCommerceReplicatorServices.DataBinding.CustomerDataBinding", b =>
+            modelBuilder.Entity("nopCommerceReplicatorServices.DataBinding.DataBindingEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -32,20 +32,24 @@ namespace nopCommerceReplicatorServices.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("BindedObject")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExternalId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsStockReplicated")
+                        .HasColumnType("bit");
+
                     b.Property<int>("NopCommerceId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ServiceKey")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ServiceName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Service")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataBinding");
+                    b.ToTable("DataBinding", (string)null);
                 });
 #pragma warning restore 612, 618
         }

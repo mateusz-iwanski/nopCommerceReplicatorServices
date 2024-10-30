@@ -29,20 +29,20 @@ namespace nopCommerceReplicatorServices.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("BindedObject")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExternalId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsStockReplicated")
+                        .HasColumnType("bit");
+
                     b.Property<int>("NopCommerceId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ServiceKey")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ServiceName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ServiceValue")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Service")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 

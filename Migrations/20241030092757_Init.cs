@@ -5,7 +5,7 @@
 namespace nopCommerceReplicatorServices.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,13 +16,15 @@ namespace nopCommerceReplicatorServices.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ServiceName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ServiceKey = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    NopCommerceId = table.Column<int>(type: "int", nullable: false)
+                    Service = table.Column<int>(type: "int", nullable: false),
+                    BindedObject = table.Column<int>(type: "int", nullable: false),
+                    ExternalId = table.Column<int>(type: "int", nullable: false),
+                    NopCommerceId = table.Column<int>(type: "int", nullable: false),
+                    IsStockReplicated = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Customers", x => x.Id);
+                    table.PrimaryKey("PK_DataBinding", x => x.Id);
                 });
         }
 
