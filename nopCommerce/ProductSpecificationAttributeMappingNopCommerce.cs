@@ -44,11 +44,11 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// Look on GetByIds, if checking over product ID and the specification attribute option ID is 
         /// not enough, change it.
         /// </remarks>
-        /// <param name="productId">The ID of the product from SubiektGT service</param>
+        /// <param name="externalProductId">The ID of the product from SubiektGT service</param>
         /// <param name="attributeSpecExternal">The external product attribute source dat</param>
         /// <param name="setService">The chosen service</param>
         [DeserializeWebApiNopCommerceResponse]
-        public async Task<List<HttpResponseMessage>>? CreateAsync(int productId, IAttributeSpecificationSourceData attributeSpecExternal)
+        public async Task<List<HttpResponseMessage>>? CreateAsync(int externalProductId, IAttributeSpecificationSourceData attributeSpecExternal)
         {
             List<HttpResponseMessage> httpResponses = new List<HttpResponseMessage>();
 
@@ -58,12 +58,12 @@ namespace nopCommerceReplicatorServices.nopCommerce
             // Set service SubiektGT because we need to have nopCommerce id of the product
             // When we add product from Subiekt GT (main service) we bind ids by SubiektGT not by Django
             // Only main service can add and link products, rest of external services just update data.
-            var dataBinding = dataBindingService.GetKeyBinding((Service)0, ServiceKeyName, productId.ToString()) ?? 
+            var dataBinding = dataBindingService.GetKeyBindingByExternalId((Service)0, ObjectToBind.Product, externalProductId) ?? 
                 throw new UnreplicatedDataException("Product doesn't exist in nopCommerce");
 
             var attributeSpecificationService = _serviceProvider.GetService<AttributeSpecificationNopCommerce>();
 
-            var attributeSpecificationMapperDtoList = attributeSpecExternal.Get(productId);
+            var attributeSpecificationMapperDtoList = attributeSpecExternal.Get(externalProductId);
             if (attributeSpecificationMapperDtoList == null)
             {
                 return null;
