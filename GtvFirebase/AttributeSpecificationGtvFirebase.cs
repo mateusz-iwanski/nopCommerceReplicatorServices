@@ -22,12 +22,13 @@ namespace nopCommerceReplicatorServices.GtvFirebase
         private readonly IFirestoreService _firestoreService;
         private readonly IProductBaseSourceData _productSourceGt;
         private readonly IServiceProvider _serviceProvider;
+        private readonly DataBinding.DataBinding _dataBinding;
 
-        public AttributeSpecificationGtvFirebase(IFirestoreService firestoreService, IProductBaseSourceData productGt, IServiceProvider serviceProvider)
+        public AttributeSpecificationGtvFirebase(IFirestoreService firestoreService, IProductBaseSourceData productGt, DataBinding.DataBinding dataBinding)
         {
             _firestoreService = firestoreService;
             _productSourceGt = productGt;
-            _serviceProvider = serviceProvider;
+            _dataBinding = dataBinding;
         }
 
         /// <summary>
@@ -39,7 +40,7 @@ namespace nopCommerceReplicatorServices.GtvFirebase
         {
             var attributeSpecfificationList = new List<AttributeSpecificationMapperDto>();
 
-            var gtvProductId = new GtvDataBinding(_serviceProvider.GetRequiredService<DataBinding.DataBinding>()).GetGtvIdBySubiekt(subiektProductId);  
+            var gtvProductId = new GtvDataBinding(_dataBinding).GetGtvIdBySubiektAsync(subiektProductId);  
 
             var document = _firestoreService.ReadDocumentAsync<FirestoreItemDto>(new FirestoreItemDto().CollectionName, gtvProductId.ToString()).Result;
 
