@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.nopCommerce;
+using nopCommerceWebApiClient.Interfaces.Product;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -71,6 +72,7 @@ namespace nopCommerceReplicatorServices.CommandOptions
 
         /// <summary>
         /// Create attributes specifictaion for a product in nopCommerce asynchronously.
+        /// Product has to be unpublished.
         /// If the data has been previously bound do nothing. Throw CustomException if product not found.
         /// </summary>
         public async Task ReplicateProductAttributeSpecificationAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
@@ -81,10 +83,23 @@ namespace nopCommerceReplicatorServices.CommandOptions
                 var productAttributeService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Attribute") ?? 
                     throw new CustomException($"In configuration not set Service with section {serviceToReplicate} and Attribute");
 
+                // product api services
+                var productNopCommerceService = scope.ServiceProvider.GetRequiredService<IProductService>();
+
+                // check if product exists in the database
+                var product = await productNopCommerceService.GetByIdAsync(repProductIdOption) ?? throw new CustomException($"There is no product in nopCommerce with ID: {repProductIdOption}");
+
+                // only unpublished products can have new attributes
+                if (product.Published == true)
+                    throw new CustomException($"Unable to add attributes to the published product with ID: '{repProductIdOption}'. Unpublished product and try again.");
+
+                // get attribute data source service
                 IAttributeSpecificationSourceData attributeDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IAttributeSpecificationSourceData>>()(productAttributeService);
 
+                // get product specification attribute mapping api service
                 var productSpecificationAttributeMappingNopCommerce = scope.ServiceProvider.GetRequiredService<IProductSpecificationAttributeMapping>();
 
+                // create attributes for the product
                 List<HttpResponseMessage>? responses = await productSpecificationAttributeMappingNopCommerce.CreateAsync(repProductIdOption, attributeDataSourceService);
                 
                 if (responses == null)
