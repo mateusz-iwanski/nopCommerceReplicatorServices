@@ -24,16 +24,22 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// 
     /// For example: Product, Accessories, Board etc
     /// </summary>
-    internal class AttributeSpecificationNopCommerce
+    public class AttributeSpecificationNopCommerce
     {
-        private ISpecificationAttributeService _specificationAttributerApi { get; set; }
+        private readonly ISpecificationAttributeService _specificationAttributerApi;
+        private readonly AttributeSpecificationOptionNopCommerce _attributeSpecificationOptionNopCommerce;
+        private readonly AttributeSpecificationGroupNopCommerce _attributeSpecificationGroupNopCommerce;
 
-        private readonly IServiceProvider _serviceProvider;
 
-        public AttributeSpecificationNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider)
+        public AttributeSpecificationNopCommerce(
+            IApiConfigurationServices apiServices,
+            AttributeSpecificationOptionNopCommerce attributeSpecificationOptionNopCommerce,
+            AttributeSpecificationGroupNopCommerce attributeSpecificationGroupNopCommerce
+            )
         {
             _specificationAttributerApi = apiServices.SpecificationAttributeService;
-            _serviceProvider = serviceProvider;
+            _attributeSpecificationGroupNopCommerce = attributeSpecificationGroupNopCommerce;
+            _attributeSpecificationOptionNopCommerce = attributeSpecificationOptionNopCommerce;
         }
 
         /// <summary>
@@ -46,11 +52,8 @@ namespace nopCommerceReplicatorServices.nopCommerce
         /// <exception cref="NotImplementedException"></exception>
         public async Task<SpecificationAttributeDto> CreateSetAsync(string groupName, string value, string optionName)
         {
-            var atrrSpecOptionService = _serviceProvider.GetService<AttributeSpecificationOptionNopCommerce>();
-            var atrrSpecGroupService = _serviceProvider.GetService<AttributeSpecificationGroupNopCommerce>();
-
             // create or get group
-            var atrrSpecGroupObjectDto = await atrrSpecGroupService.CreateAsync(
+            var atrrSpecGroupObjectDto = await _attributeSpecificationGroupNopCommerce.CreateAsync(
                 new SpecificationAttributeGroupCreateDto
                 {
                     Name = groupName
@@ -65,7 +68,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                 });
 
             // create or get option
-            var attrValueObjectDto = await atrrSpecOptionService.CreateAsync(
+            var attrValueObjectDto = await _attributeSpecificationOptionNopCommerce.CreateAsync(
                 new SpecificationAttributeOptionCreateDto
                 {
                     SpecificationAttributeId = attrObjectDto.Id,
