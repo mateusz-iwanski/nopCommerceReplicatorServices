@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.Exceptions;
+using nopCommerceReplicatorServices.NoSQLDB;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Customer;
@@ -27,12 +28,12 @@ namespace nopCommerceReplicatorServices.nopCommerce
         public string ServiceKeyName { get => "Customer"; }
 
         private ICustomerService _customerApi { get; set; }
-        private readonly IServiceProvider _serviceProvider;
+        private readonly INoSqlDbService _noSqlDbService;
 
-        public CustomerNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider)
+        public CustomerNopCommerce(IApiConfigurationServices apiServices, INoSqlDbService noSqlDbService)
         {
+            _noSqlDbService = noSqlDbService;
             _customerApi = apiServices.CustomerService;
-            _serviceProvider = serviceProvider;
         }
 
         /// <summary>
@@ -51,41 +52,38 @@ namespace nopCommerceReplicatorServices.nopCommerce
         {
             CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new Exceptions.CustomException($"Customer does not exist in the source data");
 
-            using (var scope = _serviceProvider.CreateScope())
+            var dataBindingService = new DataBinding.DataBinding(_noSqlDbService);
+            var randomPassword = Guid.NewGuid().ToString();
+
+            if (await dataBindingService.GetKeyBindingByExternalIdAsync(setService, ObjectToBind.Customer, customerId) == null)
             {
-                using var dataBindingService = new DataBinding.DataBinding(_serviceProvider);
-                var randomPassword = Guid.NewGuid().ToString();
-
-                if (dataBindingService.GetKeyBindingByExternalId(setService, ObjectToBind.Customer, customerId) == null)
+                CustomerCreatePLDto customerCreatePLDto = new CustomerCreatePLDto
                 {
-                    CustomerCreatePLDto customerCreatePLDto = new CustomerCreatePLDto
-                    {
-                        City = customerDto.City,
-                        Company = customerDto.Company,
-                        County = customerDto.County,
-                        Email = customerDto.Email,
-                        FirstName = customerDto.FirstName,
-                        LastName = customerDto.LastName,
-                        Password = randomPassword, 
-                        Phone = customerDto.Phone,
-                        StreetAddress = customerDto.StreetAddress,
-                        StreetAddress2 = null,
-                        Username = customerDto.Email, // default username is email
-                        ZipPostalCode = customerDto.ZipPostalCode
-                    };
+                    City = customerDto.City,
+                    Company = customerDto.Company,
+                    County = customerDto.County,
+                    Email = customerDto.Email,
+                    FirstName = customerDto.FirstName,
+                    LastName = customerDto.LastName,
+                    Password = randomPassword, 
+                    Phone = customerDto.Phone,
+                    StreetAddress = customerDto.StreetAddress,
+                    StreetAddress2 = null,
+                    Username = customerDto.Email, // default username is email
+                    ZipPostalCode = customerDto.ZipPostalCode
+                };
 
-                    HttpResponseMessage? response = await _customerApi.CreatePLAsync(customerCreatePLDto);
+                HttpResponseMessage? response = await _customerApi.CreatePLAsync(customerCreatePLDto);
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var customerDtoString = await response.Content.ReadAsStringAsync();
-                        var newCustomerDtoFromResponse = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
+                if (response.IsSuccessStatusCode)
+                {
+                    var customerDtoString = await response.Content.ReadAsStringAsync();
+                    var newCustomerDtoFromResponse = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
 
-                        dataBindingService.BindKey(newCustomerDtoFromResponse.Id, setService, ObjectToBind.Customer, customerId);
-                    }
-
-                    return response;
+                    await dataBindingService.BindKeyAsync(newCustomerDtoFromResponse.Id, setService, ObjectToBind.Customer, customerId);
                 }
+
+                return response;
             }
             
             return null;
