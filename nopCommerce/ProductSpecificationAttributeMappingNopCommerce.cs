@@ -2,6 +2,7 @@
 using Microsoft.Identity.Client;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.Exceptions;
+using nopCommerceReplicatorServices.NoSQLDB;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Product;
 using nopCommerceWebApiClient.Objects.Product;
@@ -21,6 +22,9 @@ using static System.Formats.Asn1.AsnWriter;
 
 namespace nopCommerceReplicatorServices.nopCommerce
 {
+
+    
+
     /// <summary>
     /// Connect attribute specification with product
     /// </summary>
@@ -28,13 +32,22 @@ namespace nopCommerceReplicatorServices.nopCommerce
     {
         public string ServiceKeyName { get => "Product"; }
 
-        private readonly IServiceProvider _serviceProvider;
+        private readonly DataBinding.DataBinding _dataBinding;
         private readonly IProductSpecificationAttributeMappingService _productSpecificationAttributeMappingService;
+        private readonly AttributeSpecificationNopCommerce _attributeSpecificationNopCommerce;
+        private readonly AttributeSpecificationOptionNopCommerce _attributeSpecificationOptionNopCommerce;
 
-        public ProductSpecificationAttributeMappingNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider)
+        public ProductSpecificationAttributeMappingNopCommerce(
+            IApiConfigurationServices apiServices, 
+            INoSqlDbService noSqlDbService, 
+            AttributeSpecificationNopCommerce attributeSpecificationNopCommerce,
+            AttributeSpecificationOptionNopCommerce attributeSpecificationOptionNopCommerce
+            )
         {
-            _serviceProvider = serviceProvider;
             _productSpecificationAttributeMappingService = apiServices.ProductSpecificationAttributeMappingService;
+            _dataBinding = new DataBinding.DataBinding(noSqlDbService);
+            _attributeSpecificationNopCommerce = attributeSpecificationNopCommerce;
+            _attributeSpecificationOptionNopCommerce = attributeSpecificationOptionNopCommerce;
         }
 
         /// <summary>
@@ -52,16 +65,11 @@ namespace nopCommerceReplicatorServices.nopCommerce
         {
             List<HttpResponseMessage> httpResponses = new List<HttpResponseMessage>();
 
-            // get nopCommerce product id by external service product id
-            var dataBindingService = _serviceProvider.GetRequiredService<DataBinding.DataBinding>();
-
             // Set service SubiektGT because we need to have nopCommerce id of the product
             // When we add product from Subiekt GT (main service) we bind ids by SubiektGT not by Django
             // Only main service can add and link products, rest of external services just update data.
-            var dataBinding = dataBindingService.GetKeyBindingByExternalId((Service)0, ObjectToBind.Product, externalProductId) ?? 
-                throw new UnreplicatedDataException("Product doesn't exist in nopCommerce");
-
-            var attributeSpecificationService = _serviceProvider.GetService<AttributeSpecificationNopCommerce>();
+            var dataBinding = await _dataBinding.GetKeyBindingByExternalIdAsync((Service)0, ObjectToBind.Product, externalProductId) ?? 
+                throw new UnreplicatedDataException("Product doesn't exist in nopCommerce or was add manually. If was added manually to the nopCommerce link it by DataBinding.");
 
             var attributeSpecificationMapperDtoList = attributeSpecExternal.Get(externalProductId);
             if (attributeSpecificationMapperDtoList == null)
@@ -73,15 +81,14 @@ namespace nopCommerceReplicatorServices.nopCommerce
             foreach (var attributeSpecificationMapperDto in attributeSpecificationMapperDtoList)
             {
                 // create SpecificationAttribute with AttributeSpecificationOption and AttributeSpecificationGroup
-                SpecificationAttributeDto attributeSpecificationDto = await attributeSpecificationService.CreateSetAsync(
+                SpecificationAttributeDto attributeSpecificationDto = await _attributeSpecificationNopCommerce.CreateSetAsync(
                     attributeSpecificationMapperDto.GroupName,
                     attributeSpecificationMapperDto.Value,
                     attributeSpecificationMapperDto.OptionName
                     );
 
                 // get AttributeSpecificationOption for mapping with product
-                var attributeSpecificationOptionService = _serviceProvider.GetService<AttributeSpecificationOptionNopCommerce>();
-                var specificationAttributeOptionDto = await attributeSpecificationOptionService.GetBySpecificationAttributeIdAsync(attributeSpecificationDto.Id) ??
+                var specificationAttributeOptionDto = await _attributeSpecificationOptionNopCommerce.GetBySpecificationAttributeIdAsync(attributeSpecificationDto.Id) ??
                     throw new CustomException("SpecificationAttributeOption with specification attribute Id not exists");
 
                 try
