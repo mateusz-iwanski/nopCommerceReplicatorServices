@@ -10,7 +10,7 @@ namespace nopCommerceReplicatorServices
     /// Used to select a DataBinding object for binding.
     /// </summary>
     public enum ObjectToBind
-    {
+    {   
         Product,
         Customer
     }
