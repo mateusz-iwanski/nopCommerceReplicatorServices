@@ -1,12 +1,19 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using FirebaseManager.Firebase;
+using FirebaseManager.Firestore;
+using FirebaseManager.Storage;
+using Google.Api;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.Django;
+using nopCommerceReplicatorServices.GtvFirebase;
 using nopCommerceReplicatorServices.nopCommerce;
+using nopCommerceReplicatorServices.NoSQLDB;
 using nopCommerceReplicatorServices.Services;
 using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient;
@@ -23,7 +30,7 @@ namespace nopCommerceReplicatorServices
         /// <summary>
         /// Initializes a new instance of the ConfigureServices class.
         /// </summary>
-        public void ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
 
             services.AddSingleton<IConfiguration>((ConfigurationBuilder) =>
@@ -46,8 +53,6 @@ namespace nopCommerceReplicatorServices
             // Register NLog's ILogger
             services.AddSingleton<NLog.ILogger>(provider => NLog.LogManager.GetCurrentClassLogger());
 
-            services.AddDbContext<KeyBindingDbContext>();            
-
             // Nopcommerce
             services.AddScoped<CustomerNopCommerce>();
             services.AddScoped<ProductNopCommerce>();
@@ -65,14 +70,24 @@ namespace nopCommerceReplicatorServices
 
             services.AddScoped<CustomerDjango>();
             services.AddScoped<AttributeSpecificationDjango>();
-                
+
+            // Add Firestore services
+            services.AddScoped<IFirestoreConnector, FirestoreConnector>();
+            services.AddScoped<IFirestoreService, FirestoreService>();
+            services.AddScoped<IFirestorageConnector, FirestorageConnector>();
+            services.AddScoped<IFirestorageService, FirestorageService>();
+            services.AddScoped<INoSqlDbService, AzureCosmosDbService>();
+
+            services.Configure<FirebaseSettings>(context.Configuration.GetSection("Firebase"));
 
             // utils
-            services.AddScoped<DataBinding.DataBinding>();
             services.AddScoped<IDtoMapper, DtoMapper>();
 
             // rest
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
+
+            services.AddScoped<IProductBaseSourceData, ProductGt>();
+            services.AddScoped<IProductSourceData, ProductGt>();
 
             // nopCommerce customer services
             services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
@@ -101,6 +116,17 @@ namespace nopCommerceReplicatorServices
                 {
                     "CustomerGT" => serviceProvider.GetService<CustomerGT>() as ICustomerSourceData,
                     "CustomerDjango" => serviceProvider.GetService<CustomerDjango>() as ICustomerSourceData,
+                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
+                };
+            });
+
+            // data binder services
+            services.AddScoped<Func<string, IProductDataBinder>>(serviceProvider => key =>
+            {
+                return key switch
+                {
+                    nameof(Service.GtvApi) => serviceProvider.GetService<GtvProductDataBinder>() as IProductDataBinder,
+                    nameof(Service.SubiektGT) => serviceProvider.GetService<SubiektGtProductDataBinder>() as IProductDataBinder,
                     _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
