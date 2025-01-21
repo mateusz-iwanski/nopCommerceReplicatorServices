@@ -8,6 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="gtvcloud-b6fcb_personal.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="gtvcloud-b6fcb_personal.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.46.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8">
@@ -20,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FirebaseManager\FirebaseManager.csproj" />
     <ProjectReference Include="..\nopCommerceWebApiClient\nopCommerceWebApiClient.csproj" />
   </ItemGroup>
 
