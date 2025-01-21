@@ -1,6 +1,8 @@
 ﻿using Google.Api.Gax.Grpc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.nopCommerce;
+using nopCommerceReplicatorServices.NoSQLDB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,50 +13,42 @@ using System.Threading.Tasks;
 namespace nopCommerceReplicatorServices.DataBinding
 {
     /// <summary>
-    /// Bind data between nopCommerce and external services.
-    /// Data are stored in the database.
+    /// BindAsync data between nopCommerce and external services.
+    /// Data are stored in the azure cosmos db.
     /// </summary>
     /// <remarks>
     /// For example, associate a customer ID from nopCommerce with a customer ID from an external service,
     /// so that we know which nopCommerce customer is which customer on the external site or 
     /// whether the client has already been replicated from an external service.
     /// </remarks>
-    public class DataBinding : IDisposable
+    public class DataBinding
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly KeyBindingDbContext _dbContext;
+        private INoSqlDbService _noSqlDbService;
 
-        public DataBinding(IServiceProvider serviceProvider)
+        public DataBinding(INoSqlDbService noSqlDbService)
         {
-            _serviceProvider = serviceProvider;
-            _dbContext = _serviceProvider.CreateScope().ServiceProvider.GetRequiredService<KeyBindingDbContext>();
-        }
-
-        public KeyBindingDbContext GetDbContext()
-        {
-            return _dbContext;
+            _noSqlDbService = noSqlDbService;
         }
 
         /// <summary>
-        /// Bind a ID from nopCommerce with a serviceName (ID, symbol etc.) from an external service.
+        /// BindAsync a ID from nopCommerce with a serviceName (ID, symbol etc.) from an external service.
         /// </summary>
         /// <param name="nopCommerceId">The ID from nopCommerce</param>
         /// <param name="service">The key name of the external service. For example Django, GtvApi etc.</param>  
         /// <param name="objectToBind">The name of object we want to bind. For example Customer, Product etc.</param>
         /// <param name="externalId">The value of the external service. For example - if ID - "1","2","3" ... If symbol - "u1" "sas3" ... </param>
-        public void BindKey(int nopCommerceId, Service service, ObjectToBind objectToBind, int externalId)
+        public async Task BindKeyAsync(int nopCommerceId, Service service, ObjectToBind objectToBind, int externalId)
         {
-            var customerKeyBinding = new DataBindingEntity
-            {
-                NopCommerceId = nopCommerceId,
-                Service = service,
-                BindedObject = objectToBind,
-                ExternalId = externalId
-            };
+            var customerKeyBinding = new DataBindingDto
+            (
+                nopCommerceId: nopCommerceId,
+                bindedService: service.ToString(),
+                bindedObject: objectToBind.ToString(),
+                externalId: externalId
+            );
 
-            _dbContext.DataBinding.Add(customerKeyBinding);
-            _dbContext.SaveChanges();
-        }       
+            await _noSqlDbService.CreateItemAsync(customerKeyBinding);
+        }
 
         /// <summary>
         /// Get binding object by external service ID.
@@ -62,37 +56,54 @@ namespace nopCommerceReplicatorServices.DataBinding
         /// <param name="serviceName">The key name of the external service (should be the same as ICustomer.ServiceKeyName)</param>  
         /// <param name="bindedObject">The object which want to find Product, Customer, etc.</param>
         /// <param name="externalId">The ID of the external service</param>
-        public DataBindingEntity? GetKeyBindingByExternalId(Service serviceName, ObjectToBind bindedObject, int externalId)
+        public async Task<List<DataBindingDto>> GetByQueryAsync(string serviceName, string bindedObject, int externalId)
         {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<KeyBindingDbContext>();
+            var containerName = DataBindingDto.ContainerNameStatic();
+            var query = $"SELECT * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.externalId = @externalId";
+            var queryDefinition = new QueryDefinition(query)
+                .WithParameter("@serviceName", serviceName)
+                .WithParameter("@bindedObject", bindedObject)
+                .WithParameter("@externalId", externalId);
 
-                return dbContext.DataBinding.FirstOrDefault(x =>
-                    x.Service == serviceName &&
-                    x.BindedObject == bindedObject &&
-                    x.ExternalId == externalId
-                );
-            }
+            return await _noSqlDbService.GetByQueryAsync<DataBindingDto>(queryDefinition, containerName);
         }
 
-        public DataBindingEntity? GetKeyBindingByNopCommerceId(Service serviceName, ObjectToBind bindedObject, int nopCommerceId)
+        /// <summary>
+        /// Get binding object by nopCommerce ID.
+        /// </summary>
+        /// <param name="serviceName">The key name of the external service (should be the same as ICustomer.ServiceKeyName)</param>  
+        /// <param name="bindedObject">The object which want to find Product, Customer, etc.</param>
+        /// <param name="nopCommerceId">The ID of the nopCommerce</param>
+        public async Task<DataBindingDto?> GetKeyBindingByNopCommerceIdAsync(Service serviceName, ObjectToBind bindedObject, int nopCommerceId)
         {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<KeyBindingDbContext>();
+            var containerName = DataBindingDto.ContainerNameStatic();
+            var query = $"SELECT * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.nopCommerceId = @nopCommerceId";
+            var queryDefinition = new QueryDefinition(query)
+                .WithParameter("@serviceName", serviceName.ToString())
+                .WithParameter("@bindedObject", bindedObject.ToString())
+                .WithParameter("@nopCommerceId", nopCommerceId);
 
-                return dbContext.DataBinding.FirstOrDefault(x =>
-                    x.Service == serviceName &&
-                    x.BindedObject == bindedObject &&
-                    x.NopCommerceId == nopCommerceId
-                );
-            }
+            var results = await _noSqlDbService.GetByQueryAsync<DataBindingDto>(queryDefinition, containerName);
+            return results.FirstOrDefault();
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Get binding object by external service ID.
+        /// </summary>
+        /// <param name="serviceName">The key name of the external service (should be the same as ICustomer.ServiceKeyName)</param>  
+        /// <param name="bindedObject">The object which want to find Product, Customer, etc.</param>
+        /// <param name="externalId">The ID of the external service</param>
+        public async Task<DataBindingDto?> GetKeyBindingByExternalIdAsync(Service serviceName, ObjectToBind bindedObject, int externalId)
         {
-            _dbContext.Dispose();
+            var containerName = DataBindingDto.ContainerNameStatic();
+            var query = $"SELECT * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.externalId = @externalId";
+            var queryDefinition = new QueryDefinition(query)
+                .WithParameter("@serviceName", serviceName.ToString())
+                .WithParameter("@bindedObject", bindedObject.ToString())
+                .WithParameter("@externalId", externalId);
+
+            var results = await _noSqlDbService.GetByQueryAsync<DataBindingDto>(queryDefinition, containerName);
+            return results.FirstOrDefault();
         }
     }
 }
