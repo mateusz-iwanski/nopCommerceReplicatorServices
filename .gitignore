@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 settings.json
+gtvcloud-b6fcb_personal.json
 
 
 # User-specific files (MonoDevelop/Xamarin Studio)
