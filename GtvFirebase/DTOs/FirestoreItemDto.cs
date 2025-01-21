@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using nopCommerceReplicatorServices.GtvFirebase.DTOs;
 using GtvApiHub;
+using nopCommerceReplicatorServices.GtvFirebase;
 
 namespace GtvApiHubnopCommerceReplicatorServices.GtvFirebase.DTOs
 {
