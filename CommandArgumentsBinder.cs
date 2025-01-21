@@ -10,7 +10,7 @@ using static Program;
 namespace nopCommerceReplicatorServices
 {
     /// <summary>
-    /// Bind data to CommandArguments
+    /// BindAsync data to CommandArguments
     /// </summary>
     public class CommandArgumentsBinder : BinderBase<CommandArguments>
     {
