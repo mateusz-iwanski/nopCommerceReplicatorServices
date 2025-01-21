@@ -23,12 +23,9 @@ namespace nopCommerceReplicatorServices.nopCommerce
     {
         private ISpecificationAttributeGroupService _specificationAttributeGroupApi { get; set; }
 
-        private readonly IServiceProvider _serviceProvider;
-
-        public AttributeSpecificationGroupNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider)
+        public AttributeSpecificationGroupNopCommerce(IApiConfigurationServices apiServices)
         {
             _specificationAttributeGroupApi = apiServices.SpecificationAttributeGroupService;
-            _serviceProvider = serviceProvider;
         }
 
         /// <summary>
