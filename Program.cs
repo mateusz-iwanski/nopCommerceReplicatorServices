@@ -21,7 +21,7 @@ internal partial class Program
         var shProductIdOption = new Option<int>("--show_service_product", "The product ID from external service that is to be show.");
         var repProductIdOption = new Option<int>("--replicate_product", "The product ID from the external service to be replicated.");
         var repInventoryProductIdOption = new Option<int>("--replicate_product_inventory", "The product ID from the external service to be replicated.");
-        var repAttributeSpecificationProductIdOption = new Option<int>("--replicate_product_attribute", "The product ID from the external service to be replicated.");
+        var repAttributeSpecificationProductIdOption = new Option<int>("--replicate_product_attribute", "The product ID from the external service to be replicated. Product in nopCommerce must be unpublished.");
         var repProducPricetIdOption = new Option<int>("--replicate_product_price", "The product ID from the external service to be replicated.");
         var helpOption = new Option<bool>("--help", "Show help information");
         var showDetailsOption = new Option<bool>("--show_details", "Show details output");
@@ -123,8 +123,12 @@ internal partial class Program
         // service has to be marked
         if (args.RepProductIdOption > 0)
         {
-            var commandLine = new ProductReplicatorOptions();
-            await commandLine.ReplicateProductAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepProductIdOption, args.ShowDetailsOption);
+            if (args.ServiceToReplicate == Service.SubiektGT.ToString())
+            {
+                var commandLine = new ProductReplicatorOptions();
+                await commandLine.ReplicateProductAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepProductIdOption, args.ShowDetailsOption);
+            }
+            else Console.WriteLine("Invalid service to replicate product. First add product from SubiektGT, next you can update it from external services");
         }
 
         // replicate product inventory from external service
@@ -153,9 +157,9 @@ internal partial class Program
 
     public static IHostBuilder CreateHostBuilder(string[] args) =>
        Host.CreateDefaultBuilder(args)
-           .ConfigureServices((_, services) =>
+           .ConfigureServices((context, services) =>
            {
                var startup = new Startup();
-               startup.ConfigureServices(services);
+               startup.ConfigureServices(context, services);
            });
 }
