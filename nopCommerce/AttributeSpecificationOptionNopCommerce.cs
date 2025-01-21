@@ -22,12 +22,9 @@ namespace nopCommerceReplicatorServices.nopCommerce
     {
         private ISpecificationAttributeOptionService _specificationAttributeOptionApi { get; set; }
 
-        private readonly IServiceProvider _serviceProvider;
-
-        public AttributeSpecificationOptionNopCommerce(IApiConfigurationServices apiServices, IServiceProvider serviceProvider)
+        public AttributeSpecificationOptionNopCommerce(IApiConfigurationServices apiServices)
         {
             _specificationAttributeOptionApi = apiServices.SpecificationAttributeOptionService;
-            _serviceProvider = serviceProvider;
         }
 
         /// <summary>
