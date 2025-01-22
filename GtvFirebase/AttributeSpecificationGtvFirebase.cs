@@ -20,14 +20,11 @@ namespace nopCommerceReplicatorServices.GtvFirebase
     public class AttributeSpecificationGtvFirebase : IAttributeSpecificationSourceData
     {
         private readonly IFirestoreService _firestoreService;
-        private readonly IProductBaseSourceData _productSourceGt;
-        private readonly IServiceProvider _serviceProvider;
         private readonly DataBinding.DataBinding _dataBinding;
 
-        public AttributeSpecificationGtvFirebase(IFirestoreService firestoreService, IProductBaseSourceData productGt, DataBinding.DataBinding dataBinding)
+        public AttributeSpecificationGtvFirebase(IFirestoreService firestoreService, DataBinding.DataBinding dataBinding)
         {
             _firestoreService = firestoreService;
-            _productSourceGt = productGt;
             _dataBinding = dataBinding;
         }
 
