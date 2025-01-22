@@ -5,6 +5,7 @@ using nopCommerceReplicatorServices;
 using System.CommandLine;
 using System.CommandLine.Binding;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 
 internal partial class Program
 {
@@ -21,7 +22,7 @@ internal partial class Program
         var shProductIdOption = new Option<int>("--show_service_product", "The product ID from external service that is to be show.");
         var repProductIdOption = new Option<int>("--replicate_product", "The product ID from the external service to be replicated.");
         var repInventoryProductIdOption = new Option<int>("--replicate_product_inventory", "The product ID from the external service to be replicated.");
-        var repAttributeSpecificationProductIdOption = new Option<int>("--replicate_product_attribute", "The product ID from the external service to be replicated. Product in nopCommerce must be unpublished.");
+        var repAttributeSpecificationProductIdOption = new Option<int>("--replicate_product_attribute", "The product ID from the external service to be replicated.");
         var repProducPricetIdOption = new Option<int>("--replicate_product_price", "The product ID from the external service to be replicated.");
         var helpOption = new Option<bool>("--help", "Show help information");
         var showDetailsOption = new Option<bool>("--show_details", "Show details output");
@@ -76,6 +77,11 @@ internal partial class Program
     {
         Service service;
 
+        var productReplicatorOptions = serviceProvider.GetRequiredService<ProductReplicatorOptions>();
+        var customerReplicatorOptions = serviceProvider.GetRequiredService<CustomerReplicatorOptions>();
+        var externalCustomerDisplayOptions = serviceProvider.GetRequiredService<ExternalCustomerDisplayOptions>();
+        var externalProductDisplayOptions = serviceProvider.GetRequiredService<ExternalProductDisplayOptions>();
+
         // if an external service is selected, check if it exists in the list of enum services
         if (string.IsNullOrEmpty(args.ServiceToReplicate))
         {
@@ -100,66 +106,63 @@ internal partial class Program
         // service has to be marked
         if (args.RepCustomerId > 0)
         {
-            var commandOption = new CustomerReplicatorOptions();
-            await commandOption.ReplicateCustomerAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepCustomerId, args.ShowDetailsOption);
+            await customerReplicatorOptions.ReplicateCustomerAsync(args.ServiceToReplicate, args.RepCustomerId, args.ShowDetailsOption);
         }
 
         // show customer data from external service 
         // service has to be marked
         if (args.ShCustomerId > 0)
         {
-            var commandOption = new ExternalCustomerDisplayOptions();
-            await commandOption.ShowCustomerAsync(args.ServiceToReplicate, serviceProvider, configuration, args.ShCustomerId, args.ShowDetailsOption);
+            await externalCustomerDisplayOptions.ShowCustomerAsync(args.ServiceToReplicate, args.ShCustomerId, args.ShowDetailsOption);
         }
 
         // show product data from external service
         if (args.ShProductIdOption > 0)
         {
-            var commandLine = new ExternalProductDisplayOptions();
-            await commandLine.ShowProductAsync(args.ServiceToReplicate, serviceProvider, configuration, args.ShProductIdOption, args.ShowDetailsOption);
+            await externalProductDisplayOptions.ShowProductAsync(args.ServiceToReplicate, args.ShProductIdOption, args.ShowDetailsOption);
         }
 
         // replicate product data from external service
         // service has to be marked
         if (args.RepProductIdOption > 0)
         {
-            if (args.ServiceToReplicate == Service.SubiektGT.ToString())
-            {
-                var commandLine = new ProductReplicatorOptions();
-                await commandLine.ReplicateProductAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepProductIdOption, args.ShowDetailsOption);
-            }
-            else Console.WriteLine("Invalid service to replicate product. First add product from SubiektGT, next you can update it from external services");
+            await productReplicatorOptions.ReplicateProductAsync(args.ServiceToReplicate, args.RepProductIdOption, args.ShowDetailsOption);
         }
 
         // replicate product inventory from external service
         if (args.RepInventoryProductIdOption > 0)
         {
-            var commandLine = new ProductReplicatorOptions();
-            await commandLine.ReplicateProductInventoryAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepInventoryProductIdOption, args.ShowDetailsOption);
+            await productReplicatorOptions.ReplicateProductInventoryAsync(args.ServiceToReplicate, args.RepInventoryProductIdOption, args.ShowDetailsOption);
         }
 
         // replicate product attribute specification from external service
         if (args.RepAttributeSpecificationProductIdOption > 0)
         {
-            var commandLine = new ProductReplicatorOptions();
-            await commandLine.ReplicateProductAttributeSpecificationAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepAttributeSpecificationProductIdOption, args.ShowDetailsOption);
+            await productReplicatorOptions.ReplicateProductAttributeSpecificationAsync(args.ServiceToReplicate, args.RepAttributeSpecificationProductIdOption, args.ShowDetailsOption);
         }
 
         // replicate product price from external service
         if (args.RepProducPricetIdOption > 0)
         {
-            var commandLine = new ProductReplicatorOptions();
-            await commandLine.ReplicateProductPriceAsync(args.ServiceToReplicate, serviceProvider, configuration, args.RepProducPricetIdOption, args.ShowDetailsOption);
+            await productReplicatorOptions.ReplicateProductPriceAsync(args.ServiceToReplicate, args.RepProducPricetIdOption, args.ShowDetailsOption);
         }
 
-        
+
     }
 
+    //public static IHostBuilder CreateHostBuilder(string[] args) =>
+    //   Host.CreateDefaultBuilder(args)
+    //       .ConfigureServices((_, services) =>
+    //       {
+    //           var startup = new Startup();
+    //           startup.ConfigureServices(services);
+    //       });
+
     public static IHostBuilder CreateHostBuilder(string[] args) =>
-       Host.CreateDefaultBuilder(args)
-           .ConfigureServices((context, services) =>
-           {
-               var startup = new Startup();
-               startup.ConfigureServices(context, services);
-           });
+     Host.CreateDefaultBuilder(args)
+         .ConfigureServices((hostContext, services) =>
+         {
+             var startup = new Startup();
+             startup.ConfigureServices(hostContext, services);
+         });
 }
