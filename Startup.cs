@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
 using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.CommandOptions;
 using nopCommerceReplicatorServices.DataBinding;
 using nopCommerceReplicatorServices.Django;
 using nopCommerceReplicatorServices.GtvFirebase;
@@ -19,6 +20,7 @@ using nopCommerceReplicatorServices.SubiektGT;
 using nopCommerceWebApiClient;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace nopCommerceReplicatorServices
 {
@@ -53,10 +55,8 @@ namespace nopCommerceReplicatorServices
             // Register NLog's ILogger
             services.AddSingleton<NLog.ILogger>(provider => NLog.LogManager.GetCurrentClassLogger());
 
-            // Nopcommerce
-            services.AddScoped<CustomerNopCommerce>();
-            services.AddScoped<ProductNopCommerce>();
-
+            
+            
             services.AddScoped<AttributeSpecificationNopCommerce>();
             services.AddScoped<AttributeSpecificationOptionNopCommerce>();
             services.AddScoped<AttributeSpecificationGroupNopCommerce>();
@@ -64,12 +64,26 @@ namespace nopCommerceReplicatorServices
 
             services.AddScoped<ITax, TaxNopCommerce>();
 
+            // data binder 
+            
+            // to wyleci services.AddScoped<GtvProductDataBinder>();
+            // tutaj jeszcze przyjdzie na chwile django data binser
+            services.AddScoped<IProductDataBinder, SubiektGtProductDataBinder>();
+
+
             // external 
             services.AddScoped<CustomerGT>();
             services.AddScoped<ProductGt>();
-
+            services.AddScoped<ProductDjango>();
             services.AddScoped<CustomerDjango>();
             services.AddScoped<AttributeSpecificationDjango>();
+
+            // replicator options 
+            services.AddScoped<ProductReplicatorOptions>();
+            services.AddScoped<CustomerReplicatorOptions>();
+            services.AddScoped<ExternalCustomerDisplayOptions>();
+            services.AddScoped<ExternalProductDisplayOptions>();
+
 
             // Add Firestore services
             services.AddScoped<IFirestoreConnector, FirestoreConnector>();
@@ -77,6 +91,8 @@ namespace nopCommerceReplicatorServices
             services.AddScoped<IFirestorageConnector, FirestorageConnector>();
             services.AddScoped<IFirestorageService, FirestorageService>();
             services.AddScoped<INoSqlDbService, AzureCosmosDbService>();
+
+            services.AddScoped<DataBinding.DataBinding>();
 
             services.Configure<FirebaseSettings>(context.Configuration.GetSection("Firebase"));
 
@@ -86,28 +102,32 @@ namespace nopCommerceReplicatorServices
             // rest
             services.AddScoped<IApiConfigurationServices, ApiConfigurationServices>();
 
-            services.AddScoped<IProductBaseSourceData, ProductGt>();
-            services.AddScoped<IProductSourceData, ProductGt>();
+            services.AddScoped<ProductGt>();
+            
+            // Nopcommerce
+            services.AddScoped<CustomerNopCommerce>();
+            services.AddScoped<ProductNopCommerce>();
+
 
             // nopCommerce customer services
             services.AddScoped<Func<string, ICustomer>>(serviceProvider => key =>
             {
                 return key switch
                 {
-                    "CustomerNopCommerce" => serviceProvider.GetService<CustomerNopCommerce>() as ICustomer,                    
+                    "CustomerNopCommerce" => serviceProvider.GetService<CustomerNopCommerce>() as ICustomer,
                     _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
 
-            // nopCommerce _source services
-            services.AddScoped<Func<string, IProduct>>(serviceProvider => key =>
-            {
-                return key switch
-                {
-                    "ProductNopCommerce" => serviceProvider.GetService<ProductNopCommerce>() as IProduct,
-                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
-                };
-            });            
+            //// nopCommerce _source services
+            //services.AddScoped<Func<string, IProduct>>(serviceProvider => key =>
+            //{
+            //    return key switch
+            //    {
+            //        "ProductNopCommerce" => serviceProvider.GetService<ProductNopCommerce>() as IProduct,
+            //        _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
+            //    };
+            //});
 
             // source customer services
             services.AddScoped<Func<string, ICustomerSourceData>>(serviceProvider => key =>
@@ -121,15 +141,15 @@ namespace nopCommerceReplicatorServices
             });
 
             // data binder services
-            services.AddScoped<Func<string, IProductDataBinder>>(serviceProvider => key =>
-            {
-                return key switch
-                {
-                    nameof(Service.GtvApi) => serviceProvider.GetService<GtvProductDataBinder>() as IProductDataBinder,
-                    nameof(Service.SubiektGT) => serviceProvider.GetService<SubiektGtProductDataBinder>() as IProductDataBinder,
-                    _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
-                };
-            });
+            //services.AddScoped<Func<string, IProductDataBinder>>(serviceProvider => key =>
+            //{
+            //    return key switch
+            //    {
+            //        //nameof(Service.GtvApi) => serviceProvider.GetService<GtvProductDataBinder>() as IProductDataBinder,
+            //        nameof(Service.SubiektGT) => serviceProvider.GetService<SubiektGtProductDataBinder>() as IProductDataBinder,
+            //        _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
+            //    };
+            //});
 
             // source _source services
             services.AddScoped<Func<string, IProductSourceData>>(serviceProvider => key =>
@@ -137,7 +157,7 @@ namespace nopCommerceReplicatorServices
                 return key switch
                 {
                     "ProductGT" => serviceProvider.GetService<ProductGt>() as IProductSourceData,
-                    //"ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
+                    "ProductDjango" => serviceProvider.GetService<ProductDjango>() as IProductSourceData,
                     _ => throw new Exceptions.ArgumentException($"Unknown key: {key}")
                 };
             });
