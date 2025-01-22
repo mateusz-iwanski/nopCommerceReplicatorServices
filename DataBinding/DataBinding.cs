@@ -1,5 +1,6 @@
 ﻿using Google.Api.Gax.Grpc;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceReplicatorServices.NoSQLDB;
@@ -7,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Security;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -24,10 +26,24 @@ namespace nopCommerceReplicatorServices.DataBinding
     public class DataBinding
     {
         private INoSqlDbService _noSqlDbService;
+        private readonly string _databaseName;
 
-        public DataBinding(INoSqlDbService noSqlDbService)
+        public DataBinding(INoSqlDbService noSqlDbService, IConfiguration configuration)
         {
             _noSqlDbService = noSqlDbService;
+            _databaseName = configuration.GetSection("Azure:CosmosDb:CosmosDbDatabaseName").Value 
+                ?? throw new ArgumentNullException("Azure:CosmosDb:CosmosDbDatabaseName not exists in settings");  
+        }
+
+        private async Task<bool> isDatabaseContainerExists()
+        {
+            bool databaseExists = await _noSqlDbService.DatabaseExistsAsync(_databaseName);
+            if (!databaseExists) return false;
+
+            bool containerExists = await _noSqlDbService.ContainerExistsAsync(_databaseName, DataBindingDto.ContainerNameStatic());
+            if (!containerExists || !databaseExists) return false;
+
+            return true;
         }
 
         /// <summary>
@@ -58,6 +74,8 @@ namespace nopCommerceReplicatorServices.DataBinding
         /// <param name="externalId">The ID of the external service</param>
         public async Task<List<DataBindingDto>> GetByQueryAsync(string serviceName, string bindedObject, int externalId)
         {
+            if (!await isDatabaseContainerExists()) return new List<DataBindingDto>();
+
             var containerName = DataBindingDto.ContainerNameStatic();
             var query = $"SELECT * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.externalId = @externalId";
             var queryDefinition = new QueryDefinition(query)
@@ -76,8 +94,10 @@ namespace nopCommerceReplicatorServices.DataBinding
         /// <param name="nopCommerceId">The ID of the nopCommerce</param>
         public async Task<DataBindingDto?> GetKeyBindingByNopCommerceIdAsync(Service serviceName, ObjectToBind bindedObject, int nopCommerceId)
         {
+            if (!await isDatabaseContainerExists()) return null;
+
             var containerName = DataBindingDto.ContainerNameStatic();
-            var query = $"SELECT * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.nopCommerceId = @nopCommerceId";
+            var query = $"SELECT TOP * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.nopCommerceId = @nopCommerceId";
             var queryDefinition = new QueryDefinition(query)
                 .WithParameter("@serviceName", serviceName.ToString())
                 .WithParameter("@bindedObject", bindedObject.ToString())
@@ -95,8 +115,10 @@ namespace nopCommerceReplicatorServices.DataBinding
         /// <param name="externalId">The ID of the external service</param>
         public async Task<DataBindingDto?> GetKeyBindingByExternalIdAsync(Service serviceName, ObjectToBind bindedObject, int externalId)
         {
+            if (!await isDatabaseContainerExists()) return null;
+
             var containerName = DataBindingDto.ContainerNameStatic();
-            var query = $"SELECT * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.externalId = @externalId";
+            var query = $"SELECT TOP 1 * FROM c WHERE c.bindedService = @serviceName AND c.bindedObject = @bindedObject AND c.externalId = @externalId";
             var queryDefinition = new QueryDefinition(query)
                 .WithParameter("@serviceName", serviceName.ToString())
                 .WithParameter("@bindedObject", bindedObject.ToString())
