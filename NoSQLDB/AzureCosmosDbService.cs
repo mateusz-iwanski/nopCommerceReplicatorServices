@@ -74,8 +74,9 @@ namespace nopCommerceReplicatorServices.NoSQLDB
         /// 
         /// </remarks>
         public async Task<List<T>> GetByQueryAsync<T>(QueryDefinition query, string containerName) where T : CosmosDbDtoBase
-        {
+        {            
             var container = _cosmosClient.GetContainer(_databaseName, containerName);
+            
             var queryResultSetIterator = container.GetItemQueryIterator<T>(query);
 
             var results = new List<T>();
