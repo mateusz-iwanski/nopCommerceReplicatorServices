@@ -11,22 +11,32 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.CommandOptions
 {
-    internal class ProductReplicatorOptions
+    public class ProductReplicatorOptions
     {
+
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IConfiguration _configuration;
+
+        public ProductReplicatorOptions(IServiceProvider serviceProvider, IConfiguration configuration)
+        {
+            _serviceProvider = serviceProvider;
+            _configuration = configuration;
+        }
+
         /// <summary>
         /// Creates a product in nopCommerce from SubiektGT with minimal data. 
         /// If the data has been previously bound do nothing. Throw CustomException if product not found.
         /// </summary>
         /// <returns></returns>
-        public async Task ReplicateProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        public async Task ReplicateProductAsync(string serviceToReplicate, int repProductIdOption, bool showDetailsOption)
         {
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = _serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
-                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                var productService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
                     throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists"); 
 
-                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                var productNopCommerceService = scope.ServiceProvider.GetRequiredService<ProductNopCommerce>();
                 IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
 
                 IEnumerable<HttpResponseMessage>? response = await productNopCommerceService.CreateMinimalProductAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
@@ -51,15 +61,15 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// Updates the inventory of a product in nopCommerce asynchronously.
         /// If the data has been previously bound do nothing. Throw CustomException if product not found.
         /// </summary>
-        public async Task ReplicateProductInventoryAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        public async Task ReplicateProductInventoryAsync(string serviceToReplicate, int repProductIdOption, bool showDetailsOption)
         {
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = _serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
-                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                var productService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
                     throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists");
 
-                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                var productNopCommerceService = scope.ServiceProvider.GetRequiredService<ProductNopCommerce>();
                 IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
 
                 HttpResponseMessage response = await productNopCommerceService.UpdateProductInventoryAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
@@ -75,12 +85,12 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// Product has to be unpublished.
         /// If the data has been previously bound do nothing. Throw CustomException if product not found.
         /// </summary>
-        public async Task ReplicateProductAttributeSpecificationAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        public async Task ReplicateProductAttributeSpecificationAsync(string serviceToReplicate, int repProductIdOption, bool showDetailsOption)
         {
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = _serviceProvider.CreateScope())
             {
                 // get attribute specification external service which is marked for replication
-                var productAttributeService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Attribute") ?? 
+                var productAttributeService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Attribute") ?? 
                     throw new CustomException($"In configuration not set Service with section {serviceToReplicate} and Attribute");
 
                 // product api services
@@ -126,15 +136,15 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// <summary>
         /// Updates price for a product in nopCommerce asynchronously.
         /// </summary>
-        public async Task ReplicateProductPriceAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int repProductIdOption, bool showDetailsOption)
+        public async Task ReplicateProductPriceAsync(string serviceToReplicate, int repProductIdOption, bool showDetailsOption)
         {
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = _serviceProvider.CreateScope())
             {
                 // get customer service which is marked for replication
-                var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+                var productService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
                     throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists");
 
-                IProduct productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
+                var productNopCommerceService = scope.ServiceProvider.GetRequiredService<ProductNopCommerce>();
                 IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
 
                 HttpResponseMessage response = await productNopCommerceService.UpdateProductPriceAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
