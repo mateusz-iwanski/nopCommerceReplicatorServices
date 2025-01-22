@@ -12,12 +12,20 @@ namespace nopCommerceReplicatorServices.CommandOptions
 {
     public class ExternalProductDisplayOptions
     {
-        public async Task ShowProductAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int shProductIdOption, bool showDetailsOption)
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IConfiguration _configuration;
+
+        public ExternalProductDisplayOptions(IServiceProvider serviceProvider, IConfiguration configuration)
         {
-            var productService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+            _serviceProvider = serviceProvider;
+            _configuration = configuration;
+        }
+        public async Task ShowProductAsync(string serviceToReplicate, int shProductIdOption, bool showDetailsOption)
+        {
+            var productService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
                     throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists"); 
 
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = _serviceProvider.CreateScope())
             {
                 IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
 
