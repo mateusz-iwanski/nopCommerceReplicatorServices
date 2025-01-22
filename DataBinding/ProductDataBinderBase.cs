@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.Actions;
 using nopCommerceReplicatorServices.Exceptions;
+using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceWebApiClient.Objects.Product;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,7 @@ using System.Threading.Tasks;
 namespace nopCommerceReplicatorServices.DataBinding
 {
     // inherited by ProductDataBinder, CustomerDataBinder ...
-    public abstract class ProductDataBinderBase : IProductDataBinder
+    public abstract class ProductDataBinderBase
     {
         protected readonly DataBinding _dataBinding;
         protected readonly Service _service;
@@ -51,14 +52,15 @@ namespace nopCommerceReplicatorServices.DataBinding
         /// <exception cref="Exceptions.CustomException"></exception>
         public async Task BindProductAsync(IServiceProvider serviceProvider, int nopCommerceProductId, int externalProductId)
         {
-            using var scope = serviceProvider.CreateScope();
-            var productNopCommerceService = scope.ServiceProvider.GetRequiredService<Func<string, IProduct>>()("ProductNopCommerce");
-            ProductDto? productFromNopCommerce = await productNopCommerceService.GetProductByIdAsync(nopCommerceProductId) ??
-                throw new Exceptions.CustomException($"Product with nopCommerce ID '{nopCommerceProductId}' doesn't exist in nopCommerce.");
+            using (var scope = serviceProvider.CreateScope())
+            {
+                var productNopCommerceService = scope.ServiceProvider.GetRequiredService<ProductNopCommerce>();
+                ProductDto? productFromNopCommerce = await productNopCommerceService.GetProductByIdAsync(nopCommerceProductId) ??
+                    throw new Exceptions.CustomException($"Product with nopCommerce ID '{nopCommerceProductId}' doesn't exist in nopCommerce.");
 
-            var dataBindingObject = await _dataBinding.GetKeyBindingByNopCommerceIdAsync(Service.SubiektGT, ObjectToBind.Product, nopCommerceProductId) ??
-                throw new Exceptions.CustomException($"Can't find product by nopCommerce Id - '{nopCommerceProductId}' in DataBinding for serviceProvider {Service.SubiektGT.ToString()}. You have to map it first.");
-
+                var dataBindingObject = await _dataBinding.GetKeyBindingByNopCommerceIdAsync(Service.SubiektGT, ObjectToBind.Product, nopCommerceProductId) ??
+                    throw new Exceptions.CustomException($"Can't find product by nopCommerce Id - '{nopCommerceProductId}' in DataBinding for serviceProvider {Service.SubiektGT.ToString()}. You have to map it first.");
+            }
             await _dataBinding.BindKeyAsync(nopCommerceProductId, _service, ObjectToBind.Product, externalProductId);
         }
 
@@ -85,7 +87,7 @@ namespace nopCommerceReplicatorServices.DataBinding
             }
             else
             {
-                throw new CustomException($"The product from {_service.ToString()} with binded nopCommerce ID '{productNopCommerceId}' " +
+                throw new Exceptions.CustomException($"The product from {_service.ToString()} with binded nopCommerce ID '{productNopCommerceId}' " +
                     $"is not link with any {_service.ToString()} product. BindAsync data before you want to mark as stock replicated");
             }
         }
@@ -100,7 +102,7 @@ namespace nopCommerceReplicatorServices.DataBinding
             }
             else
             {
-                throw new CustomException($"The product from {_service.ToString()} with ID '{externalProductId}' " +
+                throw new Exceptions.CustomException($"The product from {_service.ToString()} with ID '{externalProductId}' " +
                     $"is not link with any nopCommerce product. BindAsync data before you want to mark as price replicated");
             }
         }
