@@ -14,6 +14,7 @@ namespace nopCommerceReplicatorServices.Actions
     /// </summary>
     public interface IProductSourceData
     {
+        Task<List<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue);
         Task<ProductCreateMinimalDto>? GetByIdAsync(int customerId);
         Task<ProductUpdateBlockInventoryDto>? GetInventoryByIdAsync(int customerId);
         Task<ProductUpdateBlockPriceDto>? GetProductPriceByIdAsync(int productId);
