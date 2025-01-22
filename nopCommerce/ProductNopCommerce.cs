@@ -1,5 +1,6 @@
 ﻿using Azure;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using nopCommerceReplicatorServices.Actions;
@@ -25,7 +26,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
     /// <summary>
     /// Represents a class that interacts with the nopCommerce product API.
     /// </summary>
-    public class ProductNopCommerce : IProduct
+    public class ProductNopCommerce //: IProduct
     {
         /// <summary>
         /// Gets the service key name for the product API.
@@ -37,21 +38,24 @@ namespace nopCommerceReplicatorServices.nopCommerce
         private readonly INoSqlDbService _noSqlDbService;
         private readonly IProductDataBinder _productDataBinder;
         private readonly DataBinding.DataBinding _dataBinding;
-
-        public ProductNopCommerce() { return; }
-
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="ProductNopCommerce"/> class.
         /// </summary>
         /// <param name="apiServices">The API configuration services.</param>
         /// <param name="serviceProvider">The service provider.</param>
-        public ProductNopCommerce(IApiConfigurationServices apiServices, IDtoMapper dtoMapper, INoSqlDbService noSqlDbService, IProductDataBinder productDataBinder)
+        public ProductNopCommerce(
+            IApiConfigurationServices apiServices, 
+            IDtoMapper dtoMapper, 
+            INoSqlDbService noSqlDbService, 
+            IProductDataBinder productDataBinder,
+            IConfiguration configuration)
         {
             _noSqlDbService = noSqlDbService;
             _productApi = apiServices.ProductService;
             _dtoMapper = dtoMapper;
             _productDataBinder = productDataBinder;
-            _dataBinding = new DataBinding.DataBinding(_noSqlDbService);
+            _dataBinding = new DataBinding.DataBinding(noSqlDbService, configuration);
         }
 
         /// <summary>
