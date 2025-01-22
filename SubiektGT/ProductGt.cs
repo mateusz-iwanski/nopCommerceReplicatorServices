@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace nopCommerceReplicatorServices.SubiektGT
 {
-    public class ProductGt : IProductSourceData, IProductBaseSourceData
+    public class ProductGt : IProductSourceData
     {
         private readonly DBConnector dbConnector;
         private readonly ITax _tax;
@@ -50,7 +50,7 @@ namespace nopCommerceReplicatorServices.SubiektGT
         /// <param name="fieldName">The field name to query by.</param>
         /// <param name="fieldValue">The field value to query by.</param>
         /// <returns>A ProductDto object if found; otherwise, null.</returns>
-        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue)
+        public async Task<List<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue)
         {
             List<ProductCreateMinimalDto> products = new List<ProductCreateMinimalDto>();
 
@@ -115,8 +115,8 @@ namespace nopCommerceReplicatorServices.SubiektGT
                         Width = width,
                         Height = depth,
                         Gtin = gtin,
-                        ShortDescription = shortDesctiprion,
-                        ManufacturerPartNumber = supplierSymbol,
+                        //ShortDescription = shortDesctiprion,
+                        //ManufacturerPartNumber = supplierSymbol,
                         VatValue = vatValue
                     };
 
@@ -266,9 +266,23 @@ namespace nopCommerceReplicatorServices.SubiektGT
             for (int i = 0; i < productList.Count; i++)
             {
                 var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList[i].VatValue);
-                productList[i] = productList[i] with { TaxCategoryId = taxCategoryId };
+                productList[i] = new ProductCreateMinimalDto
+                {
+                    Name = productList[i].Name,
+                    Sku = productList[i].Sku,
+                    Price = productList[i].Price,
+                    TaxCategoryId = taxCategoryId,
+                    Weight = productList[i].Weight,
+                    Length = productList[i].Length,
+                    Width = productList[i].Width,
+                    Height = productList[i].Height,
+                    Gtin = productList[i].Gtin,
+                    VatValue = productList[i].VatValue,
+                    SubiektGtId = productList[i].SubiektGtId
+                };
             }
         }
+
 
         /// <summary>
         /// Add data from web api to the product for ProductUpdateBlockPriceDto.
