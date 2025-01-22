@@ -12,15 +12,24 @@ namespace nopCommerceReplicatorServices.CommandOptions
 {
     public class ExternalCustomerDisplayOptions
     {
-        public async Task ShowCustomerAsync(string serviceToReplicate, IServiceProvider serviceProvider, IConfiguration configuration, int shCustomerId, bool showDetailsOption)
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IConfiguration _configuration;
+
+        public ExternalCustomerDisplayOptions(IServiceProvider serviceProvider, IConfiguration configuration)
+        {
+            _serviceProvider = serviceProvider;
+            _configuration = configuration;
+        }
+
+        public async Task ShowCustomerAsync(string serviceToReplicate, int shCustomerId, bool showDetailsOption)
         {
             Console.WriteLine($"Show customer with ID: {shCustomerId}.");
 
             // get customer service which is marked for replication
-            var customerService = configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer") ??
+            var customerService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Customer") ??
                     throw new CustomException($"In configuration Service->{serviceToReplicate}->Customer not exists"); 
 
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = _serviceProvider.CreateScope())
             {
                 ICustomerSourceData customerDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, ICustomerSourceData>>()(customerService);
 
