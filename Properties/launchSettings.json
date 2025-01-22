@@ -2,7 +2,7 @@
   "profiles": {
     "nopCommerceReplicatorServices": {
       "commandName": "Project",
-      "commandLineArgs": "--external_service SubiektGT --show_details --replicate_product_price 1484"
+      "commandLineArgs": "--external_service Django --show_details --replicate_product 1484"
     }
   }
 }
