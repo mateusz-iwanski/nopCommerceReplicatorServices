@@ -81,13 +81,35 @@ namespace nopCommerceReplicatorServices.Django
         public async Task<ProductCreateMinimalDto>? GetByIdAsync(int productId)
         {
             // get price level from settings file
-            var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") 
-                ?? throw new CustomException("Can't read from settings Service->SubiektGT->UsagePriceLevel");
+            var usagePriceLevel = _configuration.GetSection("Service").GetSection("SubiektGT").GetValue<string>("UsagePriceLevel") ??
+                throw new CustomException("Can't read from settings Service->SubiektGT->UsagePriceLevel");
 
             PriceLevelGT priceLevelGT = (PriceLevelGT)Enum.Parse(typeof(PriceLevelGT), usagePriceLevel);
 
-            var products = await GetAsync("id", productId.ToString(), priceLevelGT);
-            return products?.FirstOrDefault();
+            var products = await GetAsync("tw_Id", productId.ToString());
+            var product = products?.FirstOrDefault();
+
+            if (product != null)
+            {
+                var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)product.VatValue);
+                product = new ProductCreateMinimalDto
+                {
+                    Name = product.Name,
+                    Sku = product.Sku,
+                    Price = product.Price,
+                    TaxCategoryId = taxCategoryId,
+                    Weight = product.Weight,
+                    Length = product.Length,
+                    Width = product.Width,
+                    Height = product.Height,
+                    Gtin = product.Gtin,
+                    VatValue = product.VatValue,
+                    SubiektGtId = product.SubiektGtId
+                };
+            }
+
+
+            return product;
         }
 
         /// <summary>
@@ -104,7 +126,7 @@ namespace nopCommerceReplicatorServices.Django
             return await productGt.GetInventoryByIdAsync(productId);
         }
 
-        public async Task<IEnumerable<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel)
+        public async Task<List<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue, PriceLevelGT priceLevel)
         {
 
             List<ProductCreateMinimalDto> products = new List<ProductCreateMinimalDto>();
@@ -146,8 +168,8 @@ namespace nopCommerceReplicatorServices.Django
                         Width = width,
                         Height = depth,
                         Gtin = gtin,
-                        ShortDescription = shortDesctiprion,
-                        ManufacturerPartNumber = supplierSymbol,
+                        //ShortDescription = shortDesctiprion,
+                        //ManufacturerPartNumber = supplierSymbol,
                         VatValue = vatValue,
                         SubiektGtId = subiekt_gt_id
                     };
@@ -186,17 +208,29 @@ namespace nopCommerceReplicatorServices.Django
         /// <returns>Completed product data</returns>
         private async Task FillInDataByApiAsync(List<ProductCreateMinimalDto> productList)
         {
-            
-
             for (int i = 0; i < productList.Count; i++)
             {
                 var taxCategoryId = await _tax.GetCategoryByNameAsync((VatLevel)(int)productList[i].VatValue);
                 var priceBlock = await GetProductPriceByIdAsync(productList[i].SubiektGtId ?? 0);
                 var price = priceBlock != null ? priceBlock.Price : 0;
 
-                productList[i] = productList[i] with { TaxCategoryId = taxCategoryId, Price = price };
+                productList[i] = new ProductCreateMinimalDto
+                {
+                    Name = productList[i].Name,
+                    Sku = productList[i].Sku,
+                    Price = price,
+                    TaxCategoryId = taxCategoryId,
+                    Weight = productList[i].Weight,
+                    Length = productList[i].Length,
+                    Width = productList[i].Width,
+                    Height = productList[i].Height,
+                    Gtin = productList[i].Gtin,
+                    VatValue = productList[i].VatValue,
+                    SubiektGtId = productList[i].SubiektGtId
+                };
             }
         }
+
 
         // Get product measures attribute value by name from django ecommerce
         private decimal? getMeasures(int productId, string productAttributeName) =>
@@ -231,6 +265,11 @@ namespace nopCommerceReplicatorServices.Django
             });
 
             return attributeValue;
+        }
+
+        public Task<List<ProductCreateMinimalDto>>? GetAsync(string fieldName, object fieldValue)
+        {
+            throw new NotImplementedException();
         }
     }
 }
