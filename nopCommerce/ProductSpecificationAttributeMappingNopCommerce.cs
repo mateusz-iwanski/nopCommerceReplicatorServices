@@ -41,11 +41,12 @@ namespace nopCommerceReplicatorServices.nopCommerce
             IApiConfigurationServices apiServices, 
             INoSqlDbService noSqlDbService, 
             AttributeSpecificationNopCommerce attributeSpecificationNopCommerce,
-            AttributeSpecificationOptionNopCommerce attributeSpecificationOptionNopCommerce
+            AttributeSpecificationOptionNopCommerce attributeSpecificationOptionNopCommerce,
+            DataBinding.DataBinding dataBinding
             )
         {
             _productSpecificationAttributeMappingService = apiServices.ProductSpecificationAttributeMappingService;
-            _dataBinding = new DataBinding.DataBinding(noSqlDbService);
+            _dataBinding = dataBinding;
             _attributeSpecificationNopCommerce = attributeSpecificationNopCommerce;
             _attributeSpecificationOptionNopCommerce = attributeSpecificationOptionNopCommerce;
         }
