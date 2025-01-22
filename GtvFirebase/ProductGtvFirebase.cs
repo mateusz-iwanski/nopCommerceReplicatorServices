@@ -19,17 +19,17 @@ namespace nopCommerceReplicatorServices.GtvFirebase
     /// <summary>
     /// Product source data from Firebase.
     /// </summary>
-    public class ProductGtvFirebase : IProductSourceData
+    public class ProductGtvFirebase
     {
         private readonly IFirestoreService _firestoreService;
-        private readonly IProductBaseSourceData _productSourceGt;
+        private readonly IProductSourceData _productSourceGt;
         private readonly IConfiguration _configuration;
         private ITax _tax { get; set; }
 
         public ProductGtvFirebase(
             IFirestoreService firestoreService, 
-            IConfiguration configuration, 
-            IProductBaseSourceData productGt,
+            IConfiguration configuration,
+            IProductSourceData productGt,
             ITax tax
             )
         {
@@ -66,7 +66,22 @@ namespace nopCommerceReplicatorServices.GtvFirebase
             foreach (var desc in descriptionFromFirestore)
                 description.Append(desc.Value);
 
-            ProductCreateMinimalDto product = productGt with { Name = item.ItemName, FullDescription = description.ToString() };
+            var product = new ProductCreateMinimalDto
+            {
+                Name = item.ItemName,
+                Sku = productGt.Sku,
+                Price = productGt.Price,
+                TaxCategoryId = productGt.TaxCategoryId,
+                Weight = productGt.Weight,
+                Length = productGt.Length,
+                Width = productGt.Width,
+                Height = productGt.Height,
+                Gtin = productGt.Gtin,
+                VatValue = productGt.VatValue,
+                SubiektGtId = productGt.SubiektGtId,
+                //FullDescription = description.ToString()
+            };
+
 
             return product;
         }
