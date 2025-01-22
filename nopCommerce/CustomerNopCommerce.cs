@@ -29,11 +29,13 @@ namespace nopCommerceReplicatorServices.nopCommerce
 
         private ICustomerService _customerApi { get; set; }
         private readonly INoSqlDbService _noSqlDbService;
+        private readonly DataBinding.DataBinding _dataBinding;
 
-        public CustomerNopCommerce(IApiConfigurationServices apiServices, INoSqlDbService noSqlDbService)
+        public CustomerNopCommerce(IApiConfigurationServices apiServices, INoSqlDbService noSqlDbService, DataBinding.DataBinding dataBinding )
         {
             _noSqlDbService = noSqlDbService;
             _customerApi = apiServices.CustomerService;
+            _dataBinding = dataBinding;
         }
 
         /// <summary>
@@ -52,10 +54,9 @@ namespace nopCommerceReplicatorServices.nopCommerce
         {
             CustomerDto? customerDto = customerGate.GetById(customerId) ?? throw new Exceptions.CustomException($"Customer does not exist in the source data");
 
-            var dataBindingService = new DataBinding.DataBinding(_noSqlDbService);
             var randomPassword = Guid.NewGuid().ToString();
 
-            if (await dataBindingService.GetKeyBindingByExternalIdAsync(setService, ObjectToBind.Customer, customerId) == null)
+            if (await _dataBinding.GetKeyBindingByExternalIdAsync(setService, ObjectToBind.Customer, customerId) == null)
             {
                 CustomerCreatePLDto customerCreatePLDto = new CustomerCreatePLDto
                 {
@@ -80,7 +81,7 @@ namespace nopCommerceReplicatorServices.nopCommerce
                     var customerDtoString = await response.Content.ReadAsStringAsync();
                     var newCustomerDtoFromResponse = JsonConvert.DeserializeObject<CustomerDto>(customerDtoString);
 
-                    await dataBindingService.BindKeyAsync(newCustomerDtoFromResponse.Id, setService, ObjectToBind.Customer, customerId);
+                    await _dataBinding.BindKeyAsync(newCustomerDtoFromResponse.Id, setService, ObjectToBind.Customer, customerId);
                 }
 
                 return response;
