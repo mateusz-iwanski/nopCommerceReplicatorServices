@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.Django;
 using nopCommerceReplicatorServices.nopCommerce;
+using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Product;
 using System;
 using System.Collections.Generic;
@@ -30,31 +32,45 @@ namespace nopCommerceReplicatorServices.CommandOptions
         /// <returns></returns>
         public async Task ReplicateProductAsync(string serviceToReplicate, int repProductIdOption, bool showDetailsOption)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            //using (var scope = _serviceProvider.CreateScope())
+            //{
+            //    // get customer service which is marked for replication
+            //    var productService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
+            //        throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists"); 
+
+            //    var productNopCommerceService = scope.ServiceProvider.GetRequiredService<ProductNopCommerce>();
+            //    IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
+
+            //    IEnumerable<HttpResponseMessage>? response = await productNopCommerceService.CreateMinimalProductAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
+
+            //    if (response == null)
+            //    {
+            //        Console.WriteLine($"Adding failed. Product with ID: {repProductIdOption} already exists in the database.");
+            //        return;
+            //    }
+            //    else
+            //    {
+            //        var responseList = response.ToList();
+            //        Console.WriteLine($"Replicate product with ID: {repProductIdOption} --- Status code: {(int)responseList[0].StatusCode} ({responseList[0].StatusCode}).");
+            //        Console.WriteLine($"Update product Gtin with ID: {repProductIdOption} --- Status code: {(int)responseList[1].StatusCode} ({responseList[1].StatusCode}).");
+
+            //        if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("CreateMinimalProductAsync", responseList);
+            //    }
+            //}
+            DjangoDataFromSQL djFrom = new DjangoDataFromSQL(_serviceProvider);
+
+            //await djFrom.O_AddCategory();
+            
+            var djangoProducts = djFrom.Django_GetAllProducts();
+
+            foreach (var productDjango in djangoProducts)
             {
-                // get customer service which is marked for replication
-                var productService = _configuration.GetSection("Service").GetSection(serviceToReplicate).GetValue<string>("Product") ??
-                    throw new CustomException($"In configuration Service->{serviceToReplicate}->Product not exists"); 
-
-                var productNopCommerceService = scope.ServiceProvider.GetRequiredService<ProductNopCommerce>();
-                IProductSourceData productDataSourceService = scope.ServiceProvider.GetRequiredService<Func<string, IProductSourceData>>()(productService);
-
-                IEnumerable<HttpResponseMessage>? response = await productNopCommerceService.CreateMinimalProductAsync(repProductIdOption, productDataSourceService, Enum.Parse<Service>(serviceToReplicate));
-
-                if (response == null)
-                {
-                    Console.WriteLine($"Adding failed. Product with ID: {repProductIdOption} already exists in the database.");
-                    return;
-                }
-                else
-                {
-                    var responseList = response.ToList();
-                    Console.WriteLine($"Replicate product with ID: {repProductIdOption} --- Status code: {(int)responseList[0].StatusCode} ({responseList[0].StatusCode}).");
-                    Console.WriteLine($"Update product Gtin with ID: {repProductIdOption} --- Status code: {(int)responseList[1].StatusCode} ({responseList[1].StatusCode}).");
-
-                    if (showDetailsOption) await AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("CreateMinimalProductAsync", responseList);
-                }
+                await djFrom.O_ProductCreateMinimalDto(productDjango.Id);
+                break;
             }
+
+            
+
         }
 
         /// <summary>
