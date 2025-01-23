@@ -12,6 +12,7 @@ using nopCommerceWebApiClient.Objects.ProductSpecificationAttributeMapping;
 using nopCommerceWebApiClient.Objects.SpecificationAttribute;
 using nopCommerceWebApiClient.Objects.SpecyficationAttribute;
 using nopCommerceWebApiClient.Objects.SpecyficationAttributeGroup;
+using System.Diagnostics;
 using System.Net.Http.Json;
 
 namespace nopCommerceReplicatorServices.Django
@@ -22,7 +23,7 @@ namespace nopCommerceReplicatorServices.Django
     /// 1 - O_AddCategory najpierw trzeba utworzyć kategorie i je ustawić ręcznie w nopCommerce display order to z django zagniezdzenie
     /// STOP - ustaw kategorie 
     /// 2 - O_ProductCreateMinimalDto
-    /// 3 - O_PictureCreate
+    /// // 3 - O_PictureCreate - pozniej nie wiem jeszcze jak
     /// 3 - O_SpecificationAttributeCreateDto
     /// 4 - O_ProductAvailabilityRangeCreateDto
     /// 5 - O_ProductCategoryMappingDtoCreateDto
@@ -33,20 +34,16 @@ namespace nopCommerceReplicatorServices.Django
     internal class DjangoDataFromSQL
     {
         private readonly DBConnector _dbConnector;
-        private readonly DjangoCataloguProduct _django_cataloguProduct;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IApiConfigurationServices _apiServices;
+        private readonly ApiConfigurationServices _apiServices;
 
-        public DjangoDataFromSQL(int djangoId, IApiConfigurationServices apiServices)
+        public DjangoDataFromSQL(IServiceProvider provider)
         {
             _dbConnector = new DBConnector("Django", "postgresql");
+            _serviceProvider = provider;
             _dbConnector.Initialize();
 
-            _django_cataloguProduct = Django_CataloguProduct(djangoId);
-
-            //_serviceProvider = serviceProvider;
-
-            _apiServices = apiServices;
+            _apiServices = new ApiConfigurationServices();
 
             return;
         }
@@ -93,8 +90,10 @@ namespace nopCommerceReplicatorServices.Django
             }
         }
 
-
-
+        public async Task<bool> O_ProductPictureMappingCreateDto(int djangoProductId, int nopCommerceProductId)
+        {
+            throw new Exception("Not implemented");
+        }
 
         public async Task O_AddCategory()
         {
@@ -108,15 +107,29 @@ namespace nopCommerceReplicatorServices.Django
                     {
                         Name = category.Name,
                         Description = category.Description,
-                        PictureId = 0, // Assuming no picture for now
-                        PageSize = 10, // Default page size
-                        Published = true,
-                        DisplayOrder = category.Depth, // Assuming depth as display order
-                        ParentCategoryId = 0 // Assuming 0 if no parent
+                        ParentCategoryId = 0,
+                        CategoryTemplateId = 1,
+                        PictureId = 0,
+                        Published = false,
+                        PageSize = 0,
+                        AllowCustomersToSelectPageSize = false,
+                        PageSizeOptions = "10,20,30",
+                        ShowOnHomepage = false,
+                        IncludeInTopMenu = false,
+                        SubjectToAcl = false,
+                        LimitedToStores = false,
+                        DisplayOrder = category.Depth,
+                        RestrictFromVendors = false
                     };
 
                     HttpResponseMessage? response = await _apiServices.CategoryService.CreateAsync(categoryCreateDto);
 
+                    Debug.WriteLine($"Failed to add Category: {category.Name}");
+                    Debug.WriteLine($"Status Code: {response.StatusCode}");
+                    Debug.WriteLine($"Reason Phrase: {response.ReasonPhrase}");
+                    Debug.WriteLine($"Response Content: {response}");
+
+                    
                     if (response.IsSuccessStatusCode)
                     {
                         Console.WriteLine($"Added Category: {category.Name}");
@@ -148,6 +161,19 @@ namespace nopCommerceReplicatorServices.Django
                         Console.WriteLine($"Failed to parse length in cm: {lengthString}");
                     }
                 }
+                // Check if the string contains "mm" and remove the unit
+                else if (lengthString.Contains("mm"))
+                {
+                    lengthString = lengthString.Replace("mm", "").Trim();
+                    if (decimal.TryParse(lengthString, out length))
+                    {
+                        // length is already in mm, no conversion needed
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to parse length in mm: {lengthString}");
+                    }
+                }
                 else if (!decimal.TryParse(lengthString, out length))
                 {
                     // Handle the case where parsing fails
@@ -156,6 +182,8 @@ namespace nopCommerceReplicatorServices.Django
             }
             return (length, attributeName);
         }
+
+
         /// <summary>
         /// 
         /// </summary>
@@ -174,17 +202,21 @@ namespace nopCommerceReplicatorServices.Django
             var (length, lengthAttributeName) = hangeAttributeDimension(djangoId, 14);
             var (height, heightAttributeName) = hangeAttributeDimension(djangoId, 10);
 
+            DjangoCataloguProduct _django_cataloguProduct = Django_CataloguProduct(djangoId);
+
+            (var price, var stock) = Django_ProductPriceAndStock(djangoId);
+
             var product = new ProductCreateMinimalDto()
             {
                 Name = _django_cataloguProduct.Title,
                 Sku = _django_cataloguProduct.Upc,
-                Price = 0,
-                TaxCategoryId = 0,
-                Weight = _django_cataloguProduct.WagaWKg,
+                Price = price,
+                TaxCategoryId = 6,
+                Weight = (decimal)(_django_cataloguProduct.WagaWKg ?? 0),
                 Length = length,
                 Width = width,
                 Height = height,
-                Gtin = "GTIN"
+                Gtin = ""
             };
 
             using (var scope = _serviceProvider.CreateScope())
@@ -565,32 +597,32 @@ namespace nopCommerceReplicatorServices.Django
                             Upc = reader.GetString(reader.GetOrdinal("upc")),
                             Title = reader.GetString(reader.GetOrdinal("title")),
                             Slug = reader.GetString(reader.GetOrdinal("slug")),
-                            Description = reader.GetString(reader.GetOrdinal("description")),
-                            Rating = reader.IsDBNull(reader.GetOrdinal("rating")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("rating")),
-                            DateCreated = reader.GetDateTime(reader.GetOrdinal("date_created")),
-                            DateUpdated = reader.GetDateTime(reader.GetOrdinal("date_updated")),
+                            Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
+                            Rating = reader.IsDBNull(reader.GetOrdinal("rating")) ? (double?)null : reader.GetDouble(reader.GetOrdinal("rating")),
+                            DateCreated = reader.IsDBNull(reader.GetOrdinal("date_created")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("date_created")),
+                            DateUpdated = reader.IsDBNull(reader.GetOrdinal("date_updated")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("date_updated")),
                             IsDiscountable = reader.GetBoolean(reader.GetOrdinal("is_discountable")),
-                            CenaKartotekowa = reader.GetDecimal(reader.GetOrdinal("cena_kartotekowa")),
+                            CenaKartotekowa = reader.GetDouble(reader.GetOrdinal("cena_kartotekowa")),
                             IsNewProduct = reader.GetBoolean(reader.GetOrdinal("is_new_product")),
-                            SaleInPercent = reader.IsDBNull(reader.GetOrdinal("sale_in_percent")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("sale_in_percent")),
-                            SubiektGtId = reader.IsDBNull(reader.GetOrdinal("subiekt_gt_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("subiekt_gt_id")),
+                            SaleInPercent = reader.IsDBNull(reader.GetOrdinal("sale_in_percent")) ? (double?)null : reader.GetDouble(reader.GetOrdinal("sale_in_percent")),
+                            SubiektGtId = reader.GetInt32(reader.GetOrdinal("subiekt_gt_id")),
                             KatalogId = reader.IsDBNull(reader.GetOrdinal("katalog_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("katalog_id")),
                             ParentId = reader.IsDBNull(reader.GetOrdinal("parent_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("parent_id")),
-                            ProducentId = reader.GetInt32(reader.GetOrdinal("producent_id")),
-                            ProductClassId = reader.GetInt32(reader.GetOrdinal("product_class_id")),
+                            ProducentId = reader.IsDBNull(reader.GetOrdinal("producent_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("producent_id")),
+                            ProductClassId = reader.IsDBNull(reader.GetOrdinal("product_class_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("product_class_id")),
                             Zablokowany = reader.GetBoolean(reader.GetOrdinal("zablokowany")),
-                            NumerArtykuluProducenta = reader.GetString(reader.GetOrdinal("numer_artykulu_producenta")),
-                            WagaWKg = reader.GetDecimal(reader.GetOrdinal("waga_w_kg")),
-                            PodstawowaJednostkaMiary = reader.GetString(reader.GetOrdinal("podstawowa_jednostka_miary")),
+                            NumerArtykuluProducenta = reader.IsDBNull(reader.GetOrdinal("numer_artykulu_producenta")) ? null : reader.GetString(reader.GetOrdinal("numer_artykulu_producenta")),
+                            WagaWKg = reader.IsDBNull(reader.GetOrdinal("waga_w_kg")) ? (double?)null : reader.GetDouble(reader.GetOrdinal("waga_w_kg")),
+                            PodstawowaJednostkaMiary = reader.IsDBNull(reader.GetOrdinal("podstawowa_jednostka_miary")) ? null : reader.GetString(reader.GetOrdinal("podstawowa_jednostka_miary")),
                             OpisPodstawowaJednostkaMiary = reader.IsDBNull(reader.GetOrdinal("opis_podstawowa_jednostka_miary")) ? null : reader.GetString(reader.GetOrdinal("opis_podstawowa_jednostka_miary")),
-                            Format = reader.GetString(reader.GetOrdinal("format")),
-                            Struktura = reader.GetString(reader.GetOrdinal("struktura")),
+                            Format = reader.IsDBNull(reader.GetOrdinal("format")) ? null : reader.GetString(reader.GetOrdinal("format")),
+                            Struktura = reader.IsDBNull(reader.GetOrdinal("struktura")) ? null : reader.GetString(reader.GetOrdinal("struktura")),
                             DluzycaDo29 = reader.GetBoolean(reader.GetOrdinal("dluzyca_do_2_9")),
                             DluzycaOd3 = reader.GetBoolean(reader.GetOrdinal("dluzyca_od_3")),
                             SledzStan = reader.GetBoolean(reader.GetOrdinal("sledz_stan")),
-                            TerminDostawy = reader.GetString(reader.GetOrdinal("termin_dostawy")),
+                            TerminDostawy = reader.IsDBNull(reader.GetOrdinal("termin_dostawy")) ? null : reader.GetString(reader.GetOrdinal("termin_dostawy")),
                             HafeleApi = reader.GetBoolean(reader.GetOrdinal("hafele_api")),
-                            HafeleApiCatalogLink = reader.GetString(reader.GetOrdinal("hafele_api_catalog_link")),
+                            HafeleApiCatalogLink = reader.IsDBNull(reader.GetOrdinal("hafele_api_catalog_link")) ? null : reader.GetString(reader.GetOrdinal("hafele_api_catalog_link")),
                             GtvApi = reader.GetBoolean(reader.GetOrdinal("gtv_api")),
                             GtvApiCatalogLink = reader.IsDBNull(reader.GetOrdinal("gtv_api_catalog_link")) ? null : reader.GetString(reader.GetOrdinal("gtv_api_catalog_link"))
                         };
@@ -848,7 +880,6 @@ namespace nopCommerceReplicatorServices.Django
 
             return pictures;
         }
-
         public List<DjangoPicture> Django_GetPictureByProductId(int djangoProductId)
         {
             string query = $"""
@@ -882,6 +913,128 @@ namespace nopCommerceReplicatorServices.Django
             _dbConnector.CloseConnection();
 
             return pictures;
+        }
+
+        public List<DjangoCataloguProduct> Django_GetAllProducts()
+        {
+            string query = 
+                """
+                SELECT
+                    id, 
+                    is_public, 
+                    upc, 
+                    title, 
+                    slug, 
+                    description, 
+                    rating, 
+                    date_created, 
+                    date_updated, 
+                    is_discountable, 
+                    cena_kartotekowa, 
+                    is_new_product, 
+                    sale_in_percent, 
+                    subiekt_gt_id, 
+                    katalog_id, 
+                    parent_id, 
+                    producent_id, 
+                    product_class_id, 
+                    zablokowany, 
+                    numer_artykulu_producenta, 
+                    waga_w_kg, 
+                    podstawowa_jednostka_miary, 
+                    opis_podstawowa_jednostka_miary, 
+                    format, 
+                    struktura, 
+                    dluzyca_do_2_9, 
+                    dluzyca_od_3, 
+                    sledz_stan, 
+                    termin_dostawy, 
+                    hafele_api, 
+                    hafele_api_catalog_link, 
+                    gtv_api, 
+                    gtv_api_catalog_link
+                FROM public.catalogue_product;
+                """;
+
+            var products = new List<DjangoCataloguProduct>();
+
+            _dbConnector.OpenConnection();
+
+            _dbConnector.ExecuteQuery(query, (reader) =>
+            {
+                while (reader.Read())
+                {
+                    var product = new DjangoCataloguProduct
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("id")),
+                        IsPublic = reader.GetBoolean(reader.GetOrdinal("is_public")),
+                        Upc = reader.GetString(reader.GetOrdinal("upc")),
+                        Title = reader.GetString(reader.GetOrdinal("title")),
+                        Slug = reader.GetString(reader.GetOrdinal("slug")),
+                        Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
+                        Rating = reader.IsDBNull(reader.GetOrdinal("rating")) ? (double?)null : reader.GetDouble(reader.GetOrdinal("rating")),
+                        DateCreated = reader.IsDBNull(reader.GetOrdinal("date_created")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("date_created")),
+                        DateUpdated = reader.IsDBNull(reader.GetOrdinal("date_updated")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("date_updated")),
+                        IsDiscountable = reader.GetBoolean(reader.GetOrdinal("is_discountable")),
+                        CenaKartotekowa = reader.GetDouble(reader.GetOrdinal("cena_kartotekowa")),
+                        IsNewProduct = reader.GetBoolean(reader.GetOrdinal("is_new_product")),
+                        SaleInPercent = reader.IsDBNull(reader.GetOrdinal("sale_in_percent")) ? (double?)null : reader.GetDouble(reader.GetOrdinal("sale_in_percent")),
+                        SubiektGtId = reader.GetInt32(reader.GetOrdinal("subiekt_gt_id")),
+                        KatalogId = reader.IsDBNull(reader.GetOrdinal("katalog_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("katalog_id")),
+                        ParentId = reader.IsDBNull(reader.GetOrdinal("parent_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("parent_id")),
+                        ProducentId = reader.IsDBNull(reader.GetOrdinal("producent_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("producent_id")),
+                        ProductClassId = reader.IsDBNull(reader.GetOrdinal("product_class_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("product_class_id")),
+                        Zablokowany = reader.GetBoolean(reader.GetOrdinal("zablokowany")),
+                        NumerArtykuluProducenta = reader.IsDBNull(reader.GetOrdinal("numer_artykulu_producenta")) ? null : reader.GetString(reader.GetOrdinal("numer_artykulu_producenta")),
+                        WagaWKg = reader.IsDBNull(reader.GetOrdinal("waga_w_kg")) ? (double?)null : reader.GetDouble(reader.GetOrdinal("waga_w_kg")),
+                        PodstawowaJednostkaMiary = reader.IsDBNull(reader.GetOrdinal("podstawowa_jednostka_miary")) ? null : reader.GetString(reader.GetOrdinal("podstawowa_jednostka_miary")),
+                        OpisPodstawowaJednostkaMiary = reader.IsDBNull(reader.GetOrdinal("opis_podstawowa_jednostka_miary")) ? null : reader.GetString(reader.GetOrdinal("opis_podstawowa_jednostka_miary")),
+                        Format = reader.IsDBNull(reader.GetOrdinal("format")) ? null : reader.GetString(reader.GetOrdinal("format")),
+                        Struktura = reader.IsDBNull(reader.GetOrdinal("struktura")) ? null : reader.GetString(reader.GetOrdinal("struktura")),
+                        DluzycaDo29 = reader.GetBoolean(reader.GetOrdinal("dluzyca_do_2_9")),
+                        DluzycaOd3 = reader.GetBoolean(reader.GetOrdinal("dluzyca_od_3")),
+                        SledzStan = reader.GetBoolean(reader.GetOrdinal("sledz_stan")),
+                        TerminDostawy = reader.IsDBNull(reader.GetOrdinal("termin_dostawy")) ? null : reader.GetString(reader.GetOrdinal("termin_dostawy")),
+                        HafeleApi = reader.GetBoolean(reader.GetOrdinal("hafele_api")),
+                        HafeleApiCatalogLink = reader.IsDBNull(reader.GetOrdinal("hafele_api_catalog_link")) ? null : reader.GetString(reader.GetOrdinal("hafele_api_catalog_link")),
+                        GtvApi = reader.GetBoolean(reader.GetOrdinal("gtv_api")),
+                        GtvApiCatalogLink = reader.IsDBNull(reader.GetOrdinal("gtv_api_catalog_link")) ? null : reader.GetString(reader.GetOrdinal("gtv_api_catalog_link"))
+                    };
+                    products.Add(product);
+                }
+            });
+
+            _dbConnector.CloseConnection();
+
+            return products;
+        }
+
+        public (decimal price, int stock) Django_ProductPriceAndStock(int djangoProductId)
+        {
+            string query =
+                $"""
+                    SELECT price_excl_tax, num_in_stock 
+                    FROM public.partner_stockrecord 
+                    WHERE product_id = {djangoProductId} AND partner_sku LIKE 'HURT%';
+                """;
+
+            decimal price = 0;
+            int stock = 0;
+
+            _dbConnector.OpenConnection();
+
+            _dbConnector.ExecuteQuery(query, (reader) =>
+            {
+                while (reader.Read())
+                {
+                    price = reader.GetDecimal(reader.GetOrdinal("price_excl_tax"));
+                    stock = reader.GetInt32(reader.GetOrdinal("num_in_stock"));
+                }
+            });
+
+            _dbConnector.CloseConnection();
+
+            return (price, stock);
         }
 
 
@@ -931,40 +1084,40 @@ public class DjanogCategory
 }
 
 // main table catalogue_product
-public class DjangoCataloguProduct 
+public class DjangoCataloguProduct
 {
     public int Id { get; set; }
-    public string Structure { get; set; }
+    public string? Structure { get; set; }
     public bool IsPublic { get; set; }
     public string Upc { get; set; }
     public string Title { get; set; }
     public string Slug { get; set; }
-    public string Description { get; set; }
-    public decimal? Rating { get; set; }
-    public System.DateTime DateCreated { get; set; }
-    public System.DateTime DateUpdated { get; set; }
+    public string? Description { get; set; }
+    public double? Rating { get; set; }
+    public DateTime? DateCreated { get; set; }
+    public DateTime? DateUpdated { get; set; }
     public bool IsDiscountable { get; set; }
-    public decimal CenaKartotekowa { get; set; }
+    public double CenaKartotekowa { get; set; }
     public bool IsNewProduct { get; set; }
-    public decimal? SaleInPercent { get; set; }
-    public int? SubiektGtId { get; set; }
+    public double? SaleInPercent { get; set; }
+    public int SubiektGtId { get; set; }
     public int? KatalogId { get; set; }
     public int? ParentId { get; set; }
-    public int ProducentId { get; set; }
-    public int ProductClassId { get; set; }
+    public int? ProducentId { get; set; }
+    public int? ProductClassId { get; set; }
     public bool Zablokowany { get; set; }
-    public string NumerArtykuluProducenta { get; set; }
-    public decimal WagaWKg { get; set; }
-    public string PodstawowaJednostkaMiary { get; set; }
+    public string? NumerArtykuluProducenta { get; set; }
+    public double? WagaWKg { get; set; }
+    public string? PodstawowaJednostkaMiary { get; set; }
     public string? OpisPodstawowaJednostkaMiary { get; set; }
-    public string Format { get; set; }
-    public string Struktura { get; set; }
+    public string? Format { get; set; }
+    public string? Struktura { get; set; }
     public bool DluzycaDo29 { get; set; }
     public bool DluzycaOd3 { get; set; }
     public bool SledzStan { get; set; }
-    public string TerminDostawy { get; set; }
+    public string? TerminDostawy { get; set; }
     public bool HafeleApi { get; set; }
-    public string HafeleApiCatalogLink { get; set; }
+    public string? HafeleApiCatalogLink { get; set; }
     public bool GtvApi { get; set; }
     public string? GtvApiCatalogLink { get; set; }
 }
