@@ -5,6 +5,8 @@ using nopCommerceReplicatorServices.Django;
 using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Interfaces.Product;
+using nopCommerceWebApiClient.Objects.Manufacturer;
+using nopCommerceWebApiClient.Objects.SpecyficationAttribute;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,18 +61,16 @@ namespace nopCommerceReplicatorServices.CommandOptions
             //}
             DjangoDataFromSQL djFrom = new DjangoDataFromSQL(_serviceProvider);
 
+            // ONce
             //await djFrom.O_AddCategory();
-            
-            var djangoProducts = djFrom.Django_GetAllProducts();
+            //await djFrom.O_ManufacturerCreateDto();
 
+            var djangoProducts = djFrom.Django_GetAllProducts();
             foreach (var productDjango in djangoProducts)
             {
                 await djFrom.O_ProductCreateMinimalDto(productDjango.Id);
                 break;
             }
-
-            
-
         }
 
         /// <summary>
