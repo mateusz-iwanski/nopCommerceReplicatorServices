@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using nopCommerceReplicatorServices.Actions;
+using nopCommerceReplicatorServices.nopCommerce;
 using nopCommerceWebApiClient;
 using nopCommerceWebApiClient.Objects.Category;
 using nopCommerceWebApiClient.Objects.Manufacturer;
@@ -12,8 +14,10 @@ using nopCommerceWebApiClient.Objects.ProductSpecificationAttributeMapping;
 using nopCommerceWebApiClient.Objects.SpecificationAttribute;
 using nopCommerceWebApiClient.Objects.SpecyficationAttribute;
 using nopCommerceWebApiClient.Objects.SpecyficationAttributeGroup;
+using nopCommerceWebApiClient.Objects.UrlRecord;
 using System.Diagnostics;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 
 namespace nopCommerceReplicatorServices.Django
 {
@@ -21,14 +25,14 @@ namespace nopCommerceReplicatorServices.Django
     /// <summary>
     /// 0 - najpierw skopiować zdjęcia na bloba, później dodać zdjęcia do produktów lllllll
     /// 1 - O_AddCategory najpierw trzeba utworzyć kategorie i je ustawić ręcznie w nopCommerce display order to z django zagniezdzenie
+    /// 2 - O_ManufacturerCreateDto 
     /// STOP - ustaw kategorie 
     /// 2 - O_ProductCreateMinimalDto
     /// // 3 - O_PictureCreate - pozniej nie wiem jeszcze jak
-    /// 3 - O_SpecificationAttributeCreateDto
-    /// 4 - O_ProductAvailabilityRangeCreateDto
-    /// 5 - O_ProductCategoryMappingDtoCreateDto
-    /// 6 - O_ManufacturerCreateDto
-    /// 7 - O_ProductManufacturerMappingCreateDto
+    /// 3 - O_SpecificationAttributeCreateDto  // in O_ProductCreateMinimalDto
+    /// 4 - O_ProductAvailabilityRangeCreateDto  // in O_ProductCreateMinimalDto
+    /// 5 - O_ProductCategoryMappingDtoCreateDto // in O_ProductCreateMinimalDto
+    /// 7 - O_ProductManufacturerMappingCreateDto // in O_ProductCreateMinimalDto
     /// </summary>
 
     internal class DjangoDataFromSQL
@@ -225,9 +229,21 @@ namespace nopCommerceReplicatorServices.Django
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var specificationAttributeGroupDto = await response.Content.ReadFromJsonAsync<SpecificationAttributeGroupDto>();
-                    addedNopCommerceId = specificationAttributeGroupDto.Id;
+                    var productDto = await response.Content.ReadFromJsonAsync<ProductDto>();
+                    addedNopCommerceId = productDto.Id;
                     Console.WriteLine($"Added O_ProductCreateMinimalDto : {product.ToString()}");
+
+                    await O_ProductUpdateBlockInformationDto(djangoId, productDto.Id);
+                    await O_ProductUpdateBlockInventoryDto(addedNopCommerceId, stock);
+                    await O_ProductUpdateBlockReviewsDto(addedNopCommerceId);
+                    await O_UrlRecordCreateDto(addedNopCommerceId, product.Name);
+
+                    await O_SpecificationAttributeCreateDto(djangoId, productDto.Id);
+                    await O_ProductAvailabilityRangeCreateDto(_django_cataloguProduct.TerminDostawy);
+                    await O_ProductCategoryMappingDtoCreateDto(djangoId, productDto.Id);
+                    
+                    await O_ProductManufacturerMappingCreateDto(djangoId, productDto.Id);
+
                     return addedNopCommerceId;
                 }
                 else
@@ -235,10 +251,128 @@ namespace nopCommerceReplicatorServices.Django
                     Console.WriteLine($"Added FAILED!!!! O_ProductCreateMinimalDto: {product.ToString()}");
                     //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
                 }
+
             }
             
             return null;
         }
+
+        private string GenerateSlug(string name)
+        {
+            // Convert to lower case
+            name = name.ToLowerInvariant();
+
+            // Remove invalid characters
+            name = Regex.Replace(name, @"[^a-z0-9\s-]", "");
+
+            // Convert multiple spaces into one space
+            name = Regex.Replace(name, @"\s+", " ").Trim();
+
+            // Replace spaces with hyphens
+            name = Regex.Replace(name, @"\s", "-");
+
+            return name;
+        }
+
+        public async Task<bool> O_UrlRecordCreateDto(int nopCommerceId, string productName)
+        {
+            var slug = GenerateSlug(productName);
+
+            var urlRecordUpdateDto = new UrlRecordCreateDto()
+            {
+                EntityId = nopCommerceId,
+                EntityName = "Prouct",
+                Slug = slug,
+                LanguageId = 0,
+                IsActive = true
+            };
+            
+            await _apiServices.UrlRecordService.CreateAsync(urlRecordUpdateDto);
+
+            Console.WriteLine($"Added UrlRecordCreateDto : {urlRecordUpdateDto}");
+
+            return true;
+        }
+
+
+        public async Task<bool> O_ProductUpdateBlockInformationDto(int djangoId, int nopCommerceId)
+        {
+            var djangoProduct = Django_CataloguProduct(djangoId);
+
+            var productUpdateBlockInformationDto = new ProductUpdateBlockInformationDto
+            {
+                ShortDescription = "", //djangoProduct.Description,
+                FullDescription = djangoProduct.Description,
+                ManufacturerPartNumber = djangoProduct.NumerArtykuluProducenta,
+                Published = djangoProduct.IsPublic,
+                Deleted = false, //djangoProduct.Zablokowany,
+                Gtin = "", //djangoProduct.Upc,
+                ProductTypeId = 5, // Assuming SimpleProduct type
+                ProductTemplateId = 1, // Assuming default template
+                VendorId = 0, // Assuming no vendor
+                RequireOtherProducts = false, // Assuming no required products
+                RequiredProductIds = null,
+                AutomaticallyAddRequiredProducts = false,
+                ShowOnHomepage = false,
+                DisplayOrder = 0,
+                ParentGroupedProductId = 0,
+                VisibleIndividually = true,
+                SubjectToAcl = true,
+                LimitedToStores = false,
+                AvailableStartDateTimeUtc = null,
+                AvailableEndDateTimeUtc = null,
+                MarkAsNew = false, //djangoProduct.IsNewProduct,
+                MarkAsNewStartDateTimeUtc = null,
+                MarkAsNewEndDateTimeUtc = null
+            };
+
+            HttpResponseMessage? response = await _apiServices.ProductService.UpdateBlockInformationAsync(nopCommerceId, productUpdateBlockInformationDto);
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Updated ProductUpdateBlockInformationDto : {productUpdateBlockInformationDto}");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine($"Updated FAILED!!!! ProductUpdateBlockInformationDto: {productUpdateBlockInformationDto}");
+                return false;
+            }
+        }
+
+        public async Task<bool> O_ProductUpdateBlockInventoryDto(int nopCommerceId, int stockQuantity)
+        {
+            var productUpdateBlockInventoryDto = new ProductUpdateBlockInventoryDto
+            {
+                ManageInventoryMethodId = 1, // Assuming ManageStock
+                StockQuantity = stockQuantity,
+                ProductAvailabilityRangeId = 0, // Assuming default value
+                UseMultipleWarehouses = false, // Assuming single warehouse
+                WarehouseId = 0, // Assuming default warehouse
+                DisplayStockAvailability = true, // Display stock availability
+                DisplayStockQuantity = true, // Display stock quantity
+                MinStockQuantity = 0, // Assuming no minimum stock quantity
+                LowStockActivityId = 0, // Assuming no action on low stock
+                NotifyAdminForQuantityBelow = 0, // Assuming no admin notification
+                BackorderModeId = 0, // Assuming no backorders
+                AllowBackInStockSubscriptions = true, // Allow back in stock subscriptions
+                OrderMinimumQuantity = 1, // Assuming minimum order quantity is 1
+                OrderMaximumQuantity = 1000, // Assuming maximum order quantity is 1000
+                NotReturnable = true // Assuming product is not returnable
+            };
+
+            HttpResponseMessage? response = await _apiServices.ProductService.UpdateBlockInventoryAsync(nopCommerceId, productUpdateBlockInventoryDto);
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Updated ProductUpdateBlockInventoryDto : {productUpdateBlockInventoryDto}");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine($"Updated FAILED!!!! ProductUpdateBlockInventoryDto: {productUpdateBlockInventoryDto}");
+                return false;
+            }
+        }
+
         /// <summary>
         /// ## Product attributes add
         /// #### Note: Specification attribute need to have value! If not, it will be ignored in Product.
@@ -261,112 +395,173 @@ namespace nopCommerceReplicatorServices.Django
             {
                 foreach (var optionGrID in AttributeGroups)
                 {
-                    // step 1
+                    // step 1 - ONLY ONCE, can be only one object in database
                     var (attributeValue, attributeName) = Django_Attribute(djangoId, optionGrID.Key);
-                    specificationAttributeGroupId = new SpecificationAttributeGroupCreateDto
-                    {
-                        Name = "Producy",
-                        DisplayOrder = 0
-                    };
 
-                    HttpResponseMessage? response = await _apiServices.SpecificationAttributeGroupService.CreateAsync(specificationAttributeGroupId);
+                    // if has attibute
+                    if (!string.IsNullOrEmpty(attributeValue))
+                    {
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        createdGroup = await response.Content.ReadFromJsonAsync<SpecificationAttributeGroupDto>();
-                        Console.WriteLine($"Added SpecificationAttributeGroupCreateDto : {specificationAttributeGroupId.ToString()}");
-                        return false;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Added FAILED!!!! SpecificationAttributeGroupCreateDto: {specificationAttributeGroupId.ToString()}");
-                        //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
-                    }
+                        var httpResponseGroupByName = await _apiServices.SpecificationAttributeGroupService.GetByNameAsync("Product");
+                        // if not exists create once
+                        if (httpResponseGroupByName.StatusCode == System.Net.HttpStatusCode.NotFound)
+                        {
+                            specificationAttributeGroupId = new SpecificationAttributeGroupCreateDto
+                            {
+                                Name = "Product",
+                                DisplayOrder = 0
+                            };
 
-                    // step 2
-                    specificationAttributeCreateDto = new SpecificationAttributeCreateDto
-                    {
-                        Name = attributeName,
-                        DisplayOrder = 0,
-                        SpecificationAttributeGroupId = createdGroup.Id
-                    };
+                            HttpResponseMessage? response = await _apiServices.SpecificationAttributeGroupService.CreateAsync(specificationAttributeGroupId);
 
-                    response = await _apiServices.SpecificationAttributeService.CreateAsync(specificationAttributeCreateDto);
+                            if (response.IsSuccessStatusCode)
+                            {
+                                createdGroup = await response.Content.ReadFromJsonAsync<SpecificationAttributeGroupDto>();
+                                Console.WriteLine($"Added SpecificationAttributeGroupCreateDto : {specificationAttributeGroupId.ToString()}");
+                                return false;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Added FAILED!!!! SpecificationAttributeGroupCreateDto: {specificationAttributeGroupId.ToString()}");
+                                //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
+                            }
+                        }
+                        // if exists set once
+                        else
+                        {
+                            var response_ = await _apiServices.SpecificationAttributeGroupService.GetByNameAsync("Product");
+                            createdGroup = await response_.Content.ReadFromJsonAsync<SpecificationAttributeGroupDto>();
+                        }
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        createdAttribute = await response.Content.ReadFromJsonAsync<SpecificationAttributeDto>();
-                        Console.WriteLine($"Added SpecificationAttributeCreateDto : {specificationAttributeCreateDto.ToString()}");
-                        return false;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Added FAILED!!!! SpecificationAttributeCreateDto: {specificationAttributeCreateDto.ToString()}");
-                        //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
-                    }
+                        // step 2
+                        // can be only one in database with name and SpecificationAttributeGroupId
 
-                    // step 3
-                    specificationAttributeOptionCreateDto = new SpecificationAttributeOptionCreateDto
-                    {
-                        Name = attributeValue,
-                        DisplayOrder = 0,
-                        SpecificationAttributeId = createdAttribute.Id
-                    };
+                        var existingAttributes = await _apiServices.SpecificationAttributeService.GetAllAsync();
+                        createdAttribute = existingAttributes.FirstOrDefault(attr => attr.Name == attributeName && attr.SpecificationAttributeGroupId == createdGroup.Id);
 
-                    response = await _apiServices.SpecificationAttributeOptionService.CreateAsync(specificationAttributeOptionCreateDto);
+                        if (createdAttribute == null)
+                        {
+                            specificationAttributeCreateDto = new SpecificationAttributeCreateDto
+                            {
+                                Name = attributeName,
+                                DisplayOrder = 0,
+                                SpecificationAttributeGroupId = createdGroup.Id
+                            };
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        createdOption = await response.Content.ReadFromJsonAsync<SpecificationAttributeOptionDto>();
-                        Console.WriteLine($"Added SpecificationAttributeOptionCreateDto : {specificationAttributeOptionCreateDto.ToString()}");
-                        return false;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Added FAILED!!!! SpecificationAttributeOptionCreateDto: {specificationAttributeOptionCreateDto.ToString()}");
-                        //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
-                    }
+                            HttpResponseMessage? response = await _apiServices.SpecificationAttributeService.CreateAsync(specificationAttributeCreateDto);
 
-                    // step 4
-                    productSpecificationAttributeMapping = new ProductSpecificationAttributeMappingCreateDto
-                    {
-                        ProductId = nopCommerceId,
-                        SpecificationAttributeOptionId = createdOption.Id,
-                        AllowFiltering = true,
-                        ShowOnProductPage = true,
-                        DisplayOrder = 0
-                    };
+                            if (response.IsSuccessStatusCode)
+                            {
+                                createdAttribute = await response.Content.ReadFromJsonAsync<SpecificationAttributeDto>();
+                                Console.WriteLine($"Added SpecificationAttributeCreateDto : {specificationAttributeCreateDto}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Added FAILED!!!! SpecificationAttributeCreateDto: {specificationAttributeCreateDto}");
+                                return false;
+                            }
+                        }
 
-                    response = await _apiServices.ProductSpecificationAttributeMappingService.CreateAsync(productSpecificationAttributeMapping);
+                        // step 3
+                        // can be only one in database
+                        // Check if the option already exists
+                        var existingOptions = await _apiServices.SpecificationAttributeOptionService.GetAllBySpecificationAttributeIdAsync(createdAttribute.Id);
+                        createdOption = existingOptions.FirstOrDefault(opt => opt.Name == attributeValue && opt.SpecificationAttributeId == createdAttribute.Id);
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        Console.WriteLine($"Added ProductSpecificationAttributeMappingCreateDto : {productSpecificationAttributeMapping.ToString()}");
-                        return false;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Added FAILED!!!! ProductSpecificationAttributeMappingCreateDto: {productSpecificationAttributeMapping.ToString()}");
-                        //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
+                        if (createdOption == null)
+                        {
+                            specificationAttributeOptionCreateDto = new SpecificationAttributeOptionCreateDto
+                            {
+                                Name = attributeValue,
+                                DisplayOrder = 0,
+                                SpecificationAttributeId = createdAttribute.Id
+                            };
+
+                            HttpResponseMessage? response = await _apiServices.SpecificationAttributeOptionService.CreateAsync(specificationAttributeOptionCreateDto);
+
+                            if (response.IsSuccessStatusCode)
+                            {
+                                createdOption = await response.Content.ReadFromJsonAsync<SpecificationAttributeOptionDto>();
+                                Console.WriteLine($"Added SpecificationAttributeOptionCreateDto : {specificationAttributeOptionCreateDto}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Added FAILED!!!! SpecificationAttributeOptionCreateDto: {specificationAttributeOptionCreateDto}");
+                                return false;
+                            }
+                        }
+
+
+                        // step 4
+                        // Check if the mapping already exists
+                        var existingMappings = await _apiServices.ProductSpecificationAttributeMappingService.GetByProductIdAsync(nopCommerceId);
+                        createdMapping = existingMappings.FirstOrDefault(mapping => mapping.ProductId == nopCommerceId && mapping.SpecificationAttributeOptionId == createdOption.Id);
+
+                        if (createdMapping == null)
+                        {
+                            productSpecificationAttributeMapping = new ProductSpecificationAttributeMappingCreateDto
+                            {
+                                ProductId = nopCommerceId,
+                                SpecificationAttributeOptionId = createdOption.Id,
+                                AllowFiltering = true,
+                                ShowOnProductPage = true,
+                                DisplayOrder = 0
+                            };
+
+                            HttpResponseMessage? response = await _apiServices.ProductSpecificationAttributeMappingService.CreateAsync(productSpecificationAttributeMapping);
+
+                            if (response.IsSuccessStatusCode)
+                            {
+                                Console.WriteLine($"Added ProductSpecificationAttributeMappingCreateDto : {productSpecificationAttributeMapping}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Added FAILED!!!! ProductSpecificationAttributeMappingCreateDto: {productSpecificationAttributeMapping}");
+                                return false;
+                            }
+                        }
                     }
                 }
             }
             return true;
         }
+
+        public async Task<bool> O_ProductUpdateBlockReviewsDto(int nopComerceProductId)
+        {
+            var productUpdateBlockReviewsDto = new ProductUpdateBlockReviewsDto
+            {
+                AllowCustomerReviews = true,
+                ApprovedTotalReviews = 0,
+                NotApprovedTotalReviews = 0
+            };
+
+            HttpResponseMessage? response = await _apiServices.ProductService.UpdateBlockReviewsAsync(nopComerceProductId, productUpdateBlockReviewsDto);
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Updated ProductUpdateBlockReviewsDto : {productUpdateBlockReviewsDto}");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine($"Updated FAILED!!!! ProductUpdateBlockReviewsDto: {productUpdateBlockReviewsDto}");
+                return false;
+            }
+        }
+
         /// <summary>
-        /// create name of Termin dostawy in django
+        /// create name of Termin dostawy from django
         /// </summary>
         /// <param name="djangoId"></param>
         /// <returns>availability range id</returns>
-        public async Task<int?> O_ProductAvailabilityRangeCreateDto(string terminDostawy)
+        private async Task<int?> O_ProductAvailabilityRangeCreateDto(string terminDostawy)
         {
             // get name of Termin dostawy in django
             // if not exists add and return id else retun id
             IEnumerable<ProductAvailabilityRangeDto> responseQuestion = await _apiServices.ProductAvailabilityRangeService.GetAllAsync();
             var reponseList = responseQuestion.ToList().FirstOrDefault(x => x.Name == terminDostawy);
 
-            if (reponseList == default)
-            {
+            if (reponseList == default && !string.IsNullOrEmpty(terminDostawy))
+            { 
                 ProductAvailabilityRangeCreateDto productAvailabilityRangeCreateDto = new ProductAvailabilityRangeCreateDto
                 {
                     Name = terminDostawy, 
@@ -390,6 +585,7 @@ namespace nopCommerceReplicatorServices.Django
             
             return null;
         }
+
         /// <summary>
         /// </summary>
         /// <param name="djangoProductId"></param>
@@ -406,11 +602,20 @@ namespace nopCommerceReplicatorServices.Django
                 return null;
             }
 
+            var nopCommerceCategories = await _apiServices.CategoryService.GetAllAsync();
+            var nopCommerceCategory = nopCommerceCategories.FirstOrDefault(c => c.Name.Equals(djangoCategory.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (nopCommerceCategory == null)
+            {
+                Console.WriteLine($"Category with name '{djangoCategory.Name}' not found in nopCommerce.");
+                return false;
+            }
+
             // Create ProductCategoryMappingCreateDto
             var productCategoryMappingCreateDto = new ProductCategoryMappingCreateDto
             {
                 ProductId = nopCommerceProductId,
-                CategoryId = djangoCategory.Id,
+                CategoryId = nopCommerceCategory.Id,
                 IsFeaturedProduct = false, // Assuming default value
                 DisplayOrder = djangoCategory.Depth // Assuming depth as display order
             };
@@ -429,6 +634,7 @@ namespace nopCommerceReplicatorServices.Django
                 return false;
             }
         }
+
         public async Task<bool?> O_ManufacturerCreateDto()
         {
             // Use Django_GetManufacturer to get manufacturer data
@@ -445,7 +651,9 @@ namespace nopCommerceReplicatorServices.Django
                         PictureId = 0, // Assuming no picture for now
                         PageSize = 10, // Default page size
                         Published = true,
-                        DisplayOrder = 0 // Default display order
+                        DisplayOrder = 0, // Default display order
+                        AllowCustomersToSelectPageSize = false,
+                        ManufacturerTemplateId = 1           
                     };
 
                     ManufacturerDto? response = await _apiServices.ManufacturerService.CreateAsync(manufacturerCreateDto);
@@ -464,6 +672,7 @@ namespace nopCommerceReplicatorServices.Django
 
             return true;
         }
+
         /// <summary>
         /// get nopcommerce manufacturer by id
         /// </summary>
@@ -722,12 +931,12 @@ namespace nopCommerceReplicatorServices.Django
 
             // zwraca wartość atrybutu po optionGrouId Uwaga różnie z tymi wartościami bywa, problem może być z int, czasem są np cm mm a czasem nie
             string query =
-                """
+                $"""
                     SELECT name
                     FROM public.catalogue_productattribute as attribute
-                    where option_group_id = 10
-                    and product_class_id = (select product_class_id from catalogue_product where id = '11476')
-                    and id = (select attribute_id FROM public.catalogue_productattributevalue WHERE product_id = '11475' and attribute_id = attribute.id and value_boolean = true)
+                    where option_group_id = {optionGrouId}
+                    and product_class_id = (select product_class_id from catalogue_product where id = {productId})
+                    and id = (select attribute_id FROM public.catalogue_productattributevalue WHERE product_id = {productId} and attribute_id = attribute.id and value_boolean = true)
                 """;
 
             _dbConnector.OpenConnection();
@@ -801,8 +1010,8 @@ namespace nopCommerceReplicatorServices.Django
                         Id = reader.GetInt32(reader.GetOrdinal("id")),
                         Nazwa = reader.GetString(reader.GetOrdinal("nazwa")),
                         Logo = reader.IsDBNull(reader.GetOrdinal("logo")) ? null : reader.GetString(reader.GetOrdinal("logo")),
-                        DuzeLogoNaStronieGlownej = reader.IsDBNull(reader.GetOrdinal("duze_logo_na_stronie_glownej")) ? null : reader.GetString(reader.GetOrdinal("duze_logo_na_stronie_glownej")),
-                        MaleLogoNaStrineGlownej = reader.IsDBNull(reader.GetOrdinal("male_logo_na_strine_glownej")) ? null : reader.GetString(reader.GetOrdinal("male_logo_na_strine_glownej")),
+                        DuzeLogoNaStronieGlownej = reader.IsDBNull(reader.GetOrdinal("duze_logo_na_stronie_glownej")) ? null : reader.GetBoolean(reader.GetOrdinal("duze_logo_na_stronie_glownej")),
+                        MaleLogoNaStrineGlownej = reader.IsDBNull(reader.GetOrdinal("male_logo_na_strine_glownej")) ? null : reader.GetBoolean(reader.GetOrdinal("male_logo_na_strine_glownej")),
                         OdnosnikDoStronyProducenta = reader.IsDBNull(reader.GetOrdinal("odnosnik_do_strony_producenta")) ? null : reader.GetString(reader.GetOrdinal("odnosnik_do_strony_producenta"))
                     };
                     manufacturers.Add(manufacturer);
@@ -835,8 +1044,8 @@ namespace nopCommerceReplicatorServices.Django
                         Id = reader.GetInt32(reader.GetOrdinal("id")),
                         Nazwa = reader.GetString(reader.GetOrdinal("nazwa")),
                         Logo = reader.IsDBNull(reader.GetOrdinal("logo")) ? null : reader.GetString(reader.GetOrdinal("logo")),
-                        DuzeLogoNaStronieGlownej = reader.IsDBNull(reader.GetOrdinal("duze_logo_na_stronie_glownej")) ? null : reader.GetString(reader.GetOrdinal("duze_logo_na_stronie_glownej")),
-                        MaleLogoNaStrineGlownej = reader.IsDBNull(reader.GetOrdinal("male_logo_na_strine_glownej")) ? null : reader.GetString(reader.GetOrdinal("male_logo_na_strine_glownej")),
+                        DuzeLogoNaStronieGlownej = reader.IsDBNull(reader.GetOrdinal("duze_logo_na_stronie_glownej")) ? null : reader.GetBoolean(reader.GetOrdinal("duze_logo_na_stronie_glownej")),
+                        MaleLogoNaStrineGlownej = reader.IsDBNull(reader.GetOrdinal("male_logo_na_strine_glownej")) ? null : reader.GetBoolean(reader.GetOrdinal("male_logo_na_strine_glownej")),
                         OdnosnikDoStronyProducenta = reader.IsDBNull(reader.GetOrdinal("odnosnik_do_strony_producenta")) ? null : reader.GetString(reader.GetOrdinal("odnosnik_do_strony_producenta"))
                     };
                     manufacturers.Add(manufacturer);
@@ -1064,8 +1273,8 @@ public class DjangoManufatorer
     public int Id { get; set; }
     public string Nazwa { get; set; }
     public string? Logo { get; set; }
-    public string? DuzeLogoNaStronieGlownej { get; set; }
-    public string? MaleLogoNaStrineGlownej { get; set; }
+    public bool? DuzeLogoNaStronieGlownej { get; set; }
+    public bool? MaleLogoNaStrineGlownej { get; set; }
     public string? OdnosnikDoStronyProducenta { get; set; }
 }
 
