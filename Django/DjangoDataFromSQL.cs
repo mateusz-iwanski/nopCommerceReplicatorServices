@@ -41,6 +41,8 @@ namespace nopCommerceReplicatorServices.Django
         private readonly IServiceProvider _serviceProvider;
         private readonly ApiConfigurationServices _apiServices;
 
+        private IEnumerable<ProductDto> productNopCommerceDtos { get; set; }
+
         public DjangoDataFromSQL(IServiceProvider provider)
         {
             _dbConnector = new DBConnector("Django", "postgresql");
@@ -49,7 +51,69 @@ namespace nopCommerceReplicatorServices.Django
 
             _apiServices = new ApiConfigurationServices();
 
+            _dbConnector.OpenConnection();
+
             return;
+        }
+
+        public void closeConnection() => _dbConnector.CloseConnection();
+
+        public Task SetAllProducts() => Task.Run(async () => productNopCommerceDtos = await _apiServices.ProductService.GetAllAsync());
+
+        public static class MimeTypeHelper
+        {
+            private static readonly Dictionary<string, string> MimeTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { ".png", "image/png" },
+                { ".jpg", "image/jpeg" },
+                { ".jpeg", "image/jpeg" },
+                { ".jfif", "image/jpeg" },
+                { ".webp", "image/webp" },
+                { ".bmp", "image/bmp" }
+            };
+
+            public static string GetMimeType(string filePath)
+            {
+                var extension = Path.GetExtension(filePath.ToLower());
+                if (extension != null && MimeTypes.TryGetValue(extension, out var mimeType))
+                {
+                    return mimeType;
+                }
+                return "application/octet-stream"; // Default MIME type if not found
+            }
+        }
+
+
+        public async Task<bool> O_ProductGetBySku(string sku)
+        {
+            var product = productNopCommerceDtos.FirstOrDefault(p => p.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase));
+
+            if (product == null)
+            {
+                Console.WriteLine("-----------------------------------------------------------------------------");
+                Console.WriteLine($"Product with SKU '{sku}' not found in nopCommerce.");
+                return false;
+            }
+
+            return true;
+        }
+
+
+        public static string ConvertTitleToSlug(string title)
+        {
+            // Convert to lower case
+            title = title.ToLowerInvariant();
+
+            // Remove invalid characters
+            title = Regex.Replace(title, @"[^a-z0-9\s-]", "");
+
+            // Convert multiple spaces into one space
+            title = Regex.Replace(title, @"\s+", " ").Trim();
+
+            // Replace spaces with hyphens
+            title = Regex.Replace(title, @"\s", "-");
+
+            return title;
         }
 
         /// <summary>
@@ -57,10 +121,11 @@ namespace nopCommerceReplicatorServices.Django
         /// it doesn't store information about file uri
         /// </summary>
         /// <returns></returns>
-        public async Task<bool> O_PictureCreate()
+        private async Task<PictureDto?> O_PictureCreate(int djangoProductId, int pictureId, string productTitle)
         {
             // Use Django_GetPicture to get picture data
-            List<DjangoPicture> pictures = Django_GetPicture();
+            List<DjangoPicture> pictures = Django_GetPicture(djangoProductId, pictureId);
+            PictureDto pictureNop = null;
 
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -68,36 +133,60 @@ namespace nopCommerceReplicatorServices.Django
                 {
                     var pictureCreateDto = new PictureCreateDto
                     {
-                        MimeType = "image/jpeg", // Assuming JPEG format, adjust as necessary
-                        SeoFilename = picture.Original,
+                        MimeType = MimeTypeHelper.GetMimeType(picture.Original), //"image/jpeg", // Assuming JPEG format, adjust as necessary
+                        SeoFilename = ConvertTitleToSlug(productTitle), //Path.GetFileNameWithoutExtension(picture.Original),
                         AltAttribute = "",
                         TitleAttribute = "",
-                        IsNew = true,
-                        VirtualPath = picture.Original // Assuming the original path is the virtual path
+                        IsNew = false,
+                        VirtualPath = ""//picture.Original // Assuming the original path is the virtual path
                     };
 
                     HttpResponseMessage? response = await _apiServices.PictureService.CreateAsync(pictureCreateDto);
 
-                    if (response.IsSuccessStatusCode)
+                     if (response.IsSuccessStatusCode)
                     {
-                        var createdPicture = await response.Content.ReadFromJsonAsync<PictureDto>();
-                        Console.WriteLine($"Added Picture: {createdPicture.Id} for Django picture ID: {picture.Id}");
+                        pictureNop = await response.Content.ReadFromJsonAsync<PictureDto>();
+                        Console.WriteLine($"### Added Picture info : {pictureNop.Id} for Django picture ID: {picture.Id}");
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to add Picture for Django picture ID: {picture.Id}");
-                        return false;
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to add Picture info for Django picture ID: {picture.Id}");
+                        return null;
                     }
                 }
 
-                return true;
+                return pictureNop;
             }
         }
 
-        public async Task<bool> O_ProductPictureMappingCreateDto(int djangoProductId, int nopCommerceProductId)
+        public async Task<bool> O_ProductPictureMappingCreateDto(int pictureId, int nopCommerceProductId, int displayOrder)
         {
-            throw new Exception("Not implemented");
+            // Create the ProductPictureMappingCreateDto object
+            var productPictureMappingCreateDto = new ProductPictureMappingCreateDto
+            {
+                PictureId = pictureId,
+                ProductId = nopCommerceProductId,
+                DisplayOrder = displayOrder
+            };
+
+            // Call the API to create the product picture mapping
+            ProductPictureMappingDto response = await _apiServices.ProductPictureMappingService.Create(productPictureMappingCreateDto);
+
+            if (response != null)
+            {
+                Console.WriteLine($"### Added ProductPictureMapping for Picture ID: {pictureId} to Product ID: {nopCommerceProductId}");
+            }
+            else
+            {
+                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                Console.WriteLine($"FAILED!!!!!! to add ProductPictureMapping for Picture ID: {pictureId} to Product ID: {nopCommerceProductId}");
+                return false;
+            }
+
+            return true;
         }
+
 
         public async Task O_AddCategory()
         {
@@ -128,19 +217,14 @@ namespace nopCommerceReplicatorServices.Django
 
                     HttpResponseMessage? response = await _apiServices.CategoryService.CreateAsync(categoryCreateDto);
 
-                    Debug.WriteLine($"Failed to add Category: {category.Name}");
-                    Debug.WriteLine($"Status Code: {response.StatusCode}");
-                    Debug.WriteLine($"Reason Phrase: {response.ReasonPhrase}");
-                    Debug.WriteLine($"Response Content: {response}");
-
-                    
                     if (response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine($"Added Category: {category.Name}");
+                        Console.WriteLine($"### Added Category: {category.Name}");
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to add Category: {category.Name}");
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to add Category: {category.Name}");
                     }
                 }
             }
@@ -162,7 +246,8 @@ namespace nopCommerceReplicatorServices.Django
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to parse length in cm: {lengthString}");
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to parse length in cm: {lengthString}");
                     }
                 }
                 // Check if the string contains "mm" and remove the unit
@@ -175,13 +260,29 @@ namespace nopCommerceReplicatorServices.Django
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to parse length in mm: {lengthString}");
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to parse length in mm: {lengthString}");
+                    }
+                }
+                // Check if the string contains "mm" and remove the unit
+                else if (lengthString.Contains("m"))
+                {
+                    lengthString = lengthString.Replace("m", "").Trim();
+                    if (decimal.TryParse(lengthString, out decimal lengthInM))
+                    {
+                        length = lengthInM * 1000; // Convert m to mm
+                    }
+                    else
+                    {
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to parse length in mm: {lengthString}");
                     }
                 }
                 else if (!decimal.TryParse(lengthString, out length))
                 {
+                    Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
                     // Handle the case where parsing fails
-                    Console.WriteLine($"Failed to parse length: {lengthString}");
+                    Console.WriteLine($"FAILED!!!!!! to parse length: {lengthString}");
                 }
             }
             return (length, attributeName);
@@ -225,16 +326,22 @@ namespace nopCommerceReplicatorServices.Django
 
             using (var scope = _serviceProvider.CreateScope())
             {
+                Console.WriteLine("-----------------------------------------------------------------------------");
+                Console.WriteLine($"ADDING PRODUCT - {product.Sku}");
                 HttpResponseMessage? response = await _apiServices.ProductService.CreateMinimalAsync(product);
 
                 if (response.IsSuccessStatusCode)
                 {
+                    //_dbConnector.OpenConnection();
+
                     var productDto = await response.Content.ReadFromJsonAsync<ProductDto>();
                     addedNopCommerceId = productDto.Id;
-                    Console.WriteLine($"Added O_ProductCreateMinimalDto : {product.ToString()}");
+                    Console.WriteLine($"### Added O_ProductCreateMinimalDto : {product.ToString()}");
+
+                    await O_ProductPictureCreateDto(djangoId, addedNopCommerceId, product.Name);
 
                     await O_ProductUpdateBlockInformationDto(djangoId, productDto.Id);
-                    await O_ProductUpdateBlockInventoryDto(addedNopCommerceId, stock);
+                    await O_ProductUpdateBlockInventoryDto(addedNopCommerceId, stock, _django_cataloguProduct.SledzStan);
                     await O_ProductUpdateBlockReviewsDto(addedNopCommerceId);
                     await O_UrlRecordCreateDto(addedNopCommerceId, product.Name);
 
@@ -244,11 +351,14 @@ namespace nopCommerceReplicatorServices.Django
                     
                     await O_ProductManufacturerMappingCreateDto(djangoId, productDto.Id);
 
+                    //_dbConnector.CloseConnection();
+
                     return addedNopCommerceId;
                 }
                 else
                 {
-                    Console.WriteLine($"Added FAILED!!!! O_ProductCreateMinimalDto: {product.ToString()}");
+                    Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                    Console.WriteLine($"### Added FAILED!!!! O_ProductCreateMinimalDto: {product.ToString()}");
                     //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
                 }
 
@@ -257,10 +367,22 @@ namespace nopCommerceReplicatorServices.Django
             return null;
         }
 
+        private static readonly Dictionary<char, char> PolishToEnglishMap = new Dictionary<char, char>
+        {
+            { 'ą', 'a' }, { 'ć', 'c' }, { 'ę', 'e' }, { 'ł', 'l' },
+            { 'ń', 'n' }, { 'ó', 'o' }, { 'ś', 's' }, { 'ź', 'z' },
+            { 'ż', 'z' }, { 'Ą', 'A' }, { 'Ć', 'C' }, { 'Ę', 'E' },
+            { 'Ł', 'L' }, { 'Ń', 'N' }, { 'Ó', 'O' }, { 'Ś', 'S' },
+            { 'Ź', 'Z' }, { 'Ż', 'Z' }
+        };
+
         private string GenerateSlug(string name)
         {
             // Convert to lower case
             name = name.ToLowerInvariant();
+
+            // Replace Polish characters with English equivalents
+            name = new string(name.Select(c => PolishToEnglishMap.ContainsKey(c) ? PolishToEnglishMap[c] : c).ToArray());
 
             // Remove invalid characters
             name = Regex.Replace(name, @"[^a-z0-9\s-]", "");
@@ -274,26 +396,89 @@ namespace nopCommerceReplicatorServices.Django
             return name;
         }
 
-        public async Task<bool> O_UrlRecordCreateDto(int nopCommerceId, string productName)
+
+        public async Task<bool> O_ProductPictureCreateDto(int djangoProductId, int nopCommerceProductId, string productTitle)
         {
-            var slug = GenerateSlug(productName);
+            var productDjango = Django_GetPictureByProductId(djangoProductId);
 
-            var urlRecordUpdateDto = new UrlRecordCreateDto()
+            if (productDjango == null)
             {
-                EntityId = nopCommerceId,
-                EntityName = "Prouct",
-                Slug = slug,
-                LanguageId = 0,
-                IsActive = true
-            };
-            
-            await _apiServices.UrlRecordService.CreateAsync(urlRecordUpdateDto);
+                Console.WriteLine($"No pictures found for django product ID: {djangoProductId}");
+                return false;
+            }
 
-            Console.WriteLine($"Added UrlRecordCreateDto : {urlRecordUpdateDto}");
+            foreach (var picture in productDjango)
+            {
+                PictureDto nopPicture = await O_PictureCreate(djangoProductId, picture.Id, productTitle);
+
+                // Download the image from the URL and convert it to a byte array
+                byte[] binaryData;
+                try
+                {
+                    using (var httpClient = new HttpClient())
+                    {
+                        binaryData = await httpClient.GetByteArrayAsync(picture.Original);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to download image from URL: {picture.Original}. Exception: {ex.Message}");
+                    return false;
+                }
+
+                PictureBinaryCreateDto pictureBinaryCreateDto = new PictureBinaryCreateDto
+                {
+                    PictureId = nopPicture.Id,
+                    BinaryData = binaryData
+                };
+
+                // Assuming you have a method to create the picture binary
+                HttpResponseMessage? response = await _apiServices.PictureBinaryService.CreateAsync(pictureBinaryCreateDto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"### Added Picture binary for nopPicture ID: {nopPicture.Id}");
+                }
+                else
+                {
+                    Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                    Console.WriteLine($"FAILED!!!!!! to add Picture binary for Picture nopPicture ID: {nopPicture.Id}");
+                    return false;
+                }
+
+                await O_ProductPictureMappingCreateDto(nopPicture.Id, nopCommerceProductId, picture.DisplayOrder);
+            }
 
             return true;
         }
 
+
+        public async Task<bool> O_UrlRecordCreateDto(int nopCommerceId, string slugFromString)
+        {
+            var slug = GenerateSlug(slugFromString);
+
+            var urlRecordUpdateDto = new UrlRecordCreateDto()
+            {
+                EntityId = nopCommerceId,
+                EntityName = "Product",
+                Slug = slug,
+                LanguageId = 0,
+                IsActive = true
+            };
+
+            var response = await _apiServices.UrlRecordService.CreateAsync(urlRecordUpdateDto);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                Console.WriteLine($"FAILED!!!!!! to add UrlRecordCreateDto : {urlRecordUpdateDto}");
+                return false;
+            }
+
+            Console.WriteLine($"### Added UrlRecordCreateDto : {urlRecordUpdateDto}");
+
+            return true;
+        }
 
         public async Task<bool> O_ProductUpdateBlockInformationDto(int djangoId, int nopCommerceId)
         {
@@ -317,7 +502,7 @@ namespace nopCommerceReplicatorServices.Django
                 DisplayOrder = 0,
                 ParentGroupedProductId = 0,
                 VisibleIndividually = true,
-                SubjectToAcl = true,
+                SubjectToAcl = false,
                 LimitedToStores = false,
                 AvailableStartDateTimeUtc = null,
                 AvailableEndDateTimeUtc = null,
@@ -329,46 +514,67 @@ namespace nopCommerceReplicatorServices.Django
             HttpResponseMessage? response = await _apiServices.ProductService.UpdateBlockInformationAsync(nopCommerceId, productUpdateBlockInformationDto);
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Updated ProductUpdateBlockInformationDto : {productUpdateBlockInformationDto}");
+                Console.WriteLine($"### Updated ProductUpdateBlockInformationDto : {productUpdateBlockInformationDto}");
                 return true;
             }
             else
             {
-                Console.WriteLine($"Updated FAILED!!!! ProductUpdateBlockInformationDto: {productUpdateBlockInformationDto}");
+                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                Console.WriteLine($"### Updated FAILED!!!! ProductUpdateBlockInformationDto: {productUpdateBlockInformationDto}");
                 return false;
             }
         }
 
-        public async Task<bool> O_ProductUpdateBlockInventoryDto(int nopCommerceId, int stockQuantity)
+        public async Task<bool> O_ProductUpdateBlockInventoryDto(int nopCommerceId, int stockQuantity, bool trackInventory)
         {
-            var productUpdateBlockInventoryDto = new ProductUpdateBlockInventoryDto
-            {
-                ManageInventoryMethodId = 1, // Assuming ManageStock
-                StockQuantity = stockQuantity,
-                ProductAvailabilityRangeId = 0, // Assuming default value
-                UseMultipleWarehouses = false, // Assuming single warehouse
-                WarehouseId = 0, // Assuming default warehouse
-                DisplayStockAvailability = true, // Display stock availability
-                DisplayStockQuantity = true, // Display stock quantity
-                MinStockQuantity = 0, // Assuming no minimum stock quantity
-                LowStockActivityId = 0, // Assuming no action on low stock
-                NotifyAdminForQuantityBelow = 0, // Assuming no admin notification
-                BackorderModeId = 0, // Assuming no backorders
-                AllowBackInStockSubscriptions = true, // Allow back in stock subscriptions
-                OrderMinimumQuantity = 1, // Assuming minimum order quantity is 1
-                OrderMaximumQuantity = 1000, // Assuming maximum order quantity is 1000
-                NotReturnable = true // Assuming product is not returnable
-            };
+            ProductUpdateBlockInventoryDto productUpdateBlockInventoryDto = null;
 
-            HttpResponseMessage? response = await _apiServices.ProductService.UpdateBlockInventoryAsync(nopCommerceId, productUpdateBlockInventoryDto);
+            if (trackInventory)
+            {
+                 productUpdateBlockInventoryDto = new ProductUpdateBlockInventoryDto
+                {
+                    ManageInventoryMethodId = trackInventory == true ? 1 : 0, // Assuming ManageStock
+                    StockQuantity = stockQuantity,
+                    ProductAvailabilityRangeId = 0, // Assuming default value
+                    UseMultipleWarehouses = false, // Assuming single warehouse
+                    WarehouseId = 0, // Assuming default warehouse
+                    DisplayStockAvailability = true, // Display stock availability
+                    DisplayStockQuantity = true, // Display stock quantity
+                    MinStockQuantity = 0, // Assuming no minimum stock quantity
+                    LowStockActivityId = 0, // Assuming no action on low stock
+                    NotifyAdminForQuantityBelow = 0, // Assuming no admin notification
+                    BackorderModeId = 0, // Assuming no backorders
+                    AllowBackInStockSubscriptions = true, // Allow back in stock subscriptions
+                    OrderMinimumQuantity = 1, // Assuming minimum order quantity is 1
+                    OrderMaximumQuantity = stockQuantity, // Assuming maximum order quantity is 1000
+                    NotReturnable = true // Assuming product is not returnable
+                };
+            }
+            else 
+            {
+                 productUpdateBlockInventoryDto = new ProductUpdateBlockInventoryDto
+                {
+                    ManageInventoryMethodId = 0, // Assuming ManageStock
+                    AllowedQuantities = "1,2,3,4,5,6,7,8,9,10",
+                    OrderMinimumQuantity = 1,
+                    OrderMaximumQuantity = 1000,
+                    NotReturnable = true
+                 };
+            }
+
+            if (!trackInventory)
+                productUpdateBlockInventoryDto.AllowedQuantities = "1,2,3,4,5,6,7,8,9,10";
+
+            HttpResponseMessage ? response = await _apiServices.ProductService.UpdateBlockInventoryAsync(nopCommerceId, productUpdateBlockInventoryDto);
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Updated ProductUpdateBlockInventoryDto : {productUpdateBlockInventoryDto}");
+                Console.WriteLine($"### Updated ProductUpdateBlockInventoryDto : {productUpdateBlockInventoryDto}");
                 return true;
             }
             else
             {
-                Console.WriteLine($"Updated FAILED!!!! ProductUpdateBlockInventoryDto: {productUpdateBlockInventoryDto}");
+                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                Console.WriteLine($"### Updated FAILED!!!! ProductUpdateBlockInventoryDto: {productUpdateBlockInventoryDto}");
                 return false;
             }
         }
@@ -417,12 +623,13 @@ namespace nopCommerceReplicatorServices.Django
                             if (response.IsSuccessStatusCode)
                             {
                                 createdGroup = await response.Content.ReadFromJsonAsync<SpecificationAttributeGroupDto>();
-                                Console.WriteLine($"Added SpecificationAttributeGroupCreateDto : {specificationAttributeGroupId.ToString()}");
+                                Console.WriteLine($"### Added SpecificationAttributeGroupCreateDto : {specificationAttributeGroupId.ToString()}");
                                 return false;
                             }
                             else
                             {
-                                Console.WriteLine($"Added FAILED!!!! SpecificationAttributeGroupCreateDto: {specificationAttributeGroupId.ToString()}");
+                                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                                Console.WriteLine($"### Added FAILED!!!! SpecificationAttributeGroupCreateDto: {specificationAttributeGroupId.ToString()}");
                                 //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
                             }
                         }
@@ -453,11 +660,12 @@ namespace nopCommerceReplicatorServices.Django
                             if (response.IsSuccessStatusCode)
                             {
                                 createdAttribute = await response.Content.ReadFromJsonAsync<SpecificationAttributeDto>();
-                                Console.WriteLine($"Added SpecificationAttributeCreateDto : {specificationAttributeCreateDto}");
+                                Console.WriteLine($"### Added SpecificationAttributeCreateDto : {specificationAttributeCreateDto}");
                             }
                             else
                             {
-                                Console.WriteLine($"Added FAILED!!!! SpecificationAttributeCreateDto: {specificationAttributeCreateDto}");
+                                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                                Console.WriteLine($"### Added FAILED!!!! SpecificationAttributeCreateDto: {specificationAttributeCreateDto}");
                                 return false;
                             }
                         }
@@ -482,11 +690,12 @@ namespace nopCommerceReplicatorServices.Django
                             if (response.IsSuccessStatusCode)
                             {
                                 createdOption = await response.Content.ReadFromJsonAsync<SpecificationAttributeOptionDto>();
-                                Console.WriteLine($"Added SpecificationAttributeOptionCreateDto : {specificationAttributeOptionCreateDto}");
+                                Console.WriteLine($"### Added SpecificationAttributeOptionCreateDto : {specificationAttributeOptionCreateDto}");
                             }
                             else
                             {
-                                Console.WriteLine($"Added FAILED!!!! SpecificationAttributeOptionCreateDto: {specificationAttributeOptionCreateDto}");
+                                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                                Console.WriteLine($"### Added FAILED!!!! SpecificationAttributeOptionCreateDto: {specificationAttributeOptionCreateDto}");
                                 return false;
                             }
                         }
@@ -512,11 +721,12 @@ namespace nopCommerceReplicatorServices.Django
 
                             if (response.IsSuccessStatusCode)
                             {
-                                Console.WriteLine($"Added ProductSpecificationAttributeMappingCreateDto : {productSpecificationAttributeMapping}");
+                                Console.WriteLine($"### Added ProductSpecificationAttributeMappingCreateDto : {productSpecificationAttributeMapping}");
                             }
                             else
                             {
-                                Console.WriteLine($"Added FAILED!!!! ProductSpecificationAttributeMappingCreateDto: {productSpecificationAttributeMapping}");
+                                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                                Console.WriteLine($"### Added FAILED!!!! ProductSpecificationAttributeMappingCreateDto: {productSpecificationAttributeMapping}");
                                 return false;
                             }
                         }
@@ -538,12 +748,13 @@ namespace nopCommerceReplicatorServices.Django
             HttpResponseMessage? response = await _apiServices.ProductService.UpdateBlockReviewsAsync(nopComerceProductId, productUpdateBlockReviewsDto);
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Updated ProductUpdateBlockReviewsDto : {productUpdateBlockReviewsDto}");
+                Console.WriteLine($"### Updated ProductUpdateBlockReviewsDto : {productUpdateBlockReviewsDto}");
                 return true;
             }
             else
             {
-                Console.WriteLine($"Updated FAILED!!!! ProductUpdateBlockReviewsDto: {productUpdateBlockReviewsDto}");
+                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                Console.WriteLine($"### Updated FAILED!!!! ProductUpdateBlockReviewsDto: {productUpdateBlockReviewsDto}");
                 return false;
             }
         }
@@ -573,12 +784,13 @@ namespace nopCommerceReplicatorServices.Django
                 if (response.IsSuccessStatusCode)
                 {
                     var createdProductAvailabilityRange = await response.Content.ReadFromJsonAsync<ProductAvailabilityRangeDto>();
-                    Console.WriteLine($"Added ProductAvailabilityRangeCreateDto : {productAvailabilityRangeCreateDto.ToString()}");
+                    Console.WriteLine($"### Added ProductAvailabilityRangeCreateDto : {productAvailabilityRangeCreateDto.ToString()}");
                     return createdProductAvailabilityRange.Id;
                 }
                 else
                 {
-                    Console.WriteLine($"Added FAILED!!!! ProductAvailabilityRangeCreateDto: {productAvailabilityRangeCreateDto.ToString()}");
+                    Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                    Console.WriteLine($"### Added FAILED!!!! ProductAvailabilityRangeCreateDto: {productAvailabilityRangeCreateDto.ToString()}");
                     //AttributeHelper.DeserializeWebApiNopCommerceResponseAsync<ProductNopCommerce>("ProductCreateMinimalDto", responseList);
                 }
             }
@@ -625,12 +837,13 @@ namespace nopCommerceReplicatorServices.Django
 
             if (response != null)
             {
-                Console.WriteLine($"Added ProductCategoryMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
+                Console.WriteLine($"### Added ProductCategoryMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
                 return true;
             }
             else
             {
-                Console.WriteLine($"Failed to add ProductCategoryMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
+                Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                Console.WriteLine($"FAILED!!!!!! to add ProductCategoryMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
                 return false;
             }
         }
@@ -660,11 +873,12 @@ namespace nopCommerceReplicatorServices.Django
 
                     if (response != null)
                     {
-                        Console.WriteLine($"Added Manufacturer: {manufacturer.Nazwa}");
+                        Console.WriteLine($"### Added Manufacturer: {manufacturer.Nazwa}");
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to add Manufacturer: {manufacturer.Nazwa}");
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to add Manufacturer: {manufacturer.Nazwa}");
                         return false;
                     }
                 }
@@ -727,11 +941,12 @@ namespace nopCommerceReplicatorServices.Django
 
                     if (response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine($"Added ProductManufacturerMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
+                        Console.WriteLine($"### Added ProductManufacturerMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to add ProductManufacturerMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
+                        Console.WriteLine("ERROR-ERROR-ERROR-ERROR-ERROR-ERROR-ERROR");
+                        Console.WriteLine($"FAILED!!!!!! to add ProductManufacturerMapping for Django product ID: {djangoProductId} to nopCommerce product ID: {nopCommerceProductId}");
                         return false;
                     }
                 }
@@ -743,7 +958,7 @@ namespace nopCommerceReplicatorServices.Django
         // DJANGO OBJECTS for above class to use it
 
         //main class product
-        private DjangoCataloguProduct Django_CataloguProduct(int djangoProductId)
+        public DjangoCataloguProduct Django_CataloguProduct(int djangoProductId)
         {
             string query =
                 $"""
@@ -782,12 +997,12 @@ namespace nopCommerceReplicatorServices.Django
                     gtv_api, 
                     gtv_api_catalog_link
                 FROM public.catalogue_product
-                WHERE id = {djangoProductId};
+                WHERE id = {djangoProductId} and is_public = true;
                 """;
 
             var product = new DjangoCataloguProduct();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -839,7 +1054,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return product;
         }
@@ -851,7 +1066,7 @@ namespace nopCommerceReplicatorServices.Django
             WHERE id = (SELECT category_id FROM public.catalogue_productcategory WHERE product_id = {djangoProductId});
             """;
             var category = new DjanogCategory();
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
                 while (reader.Read())
@@ -870,7 +1085,7 @@ namespace nopCommerceReplicatorServices.Django
                     };
                 }
             });
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
             return category;
         }
         private static Dictionary<int, string> AttributeGroups = new Dictionary<int, string>
@@ -924,6 +1139,46 @@ namespace nopCommerceReplicatorServices.Django
                 { 50, "typ gniazda" },
                 { 51, "napięcie" }
             };
+
+
+        public class DjangoRecommendedProduct
+        {
+            public int Id { get; set; }
+            public int Ranking { get; set; }
+            public int PrimaryId { get; set; }
+            public int RecommendationId { get; set; }
+        }
+
+        // product connection
+        public List<DjangoRecommendedProduct> Django_GetRecommendedProducts(int djangoProductId)
+        {
+            string query = $"""
+                SELECT id, ranking, primary_id, recommendation_id
+                FROM public.catalogue_productrecommendation
+                WHERE primary_id = {djangoProductId}
+            """;
+
+            var recommendedProducts = new List<DjangoRecommendedProduct>();
+
+            _dbConnector.ExecuteQuery(query, (reader) =>
+            {
+                while (reader.Read())
+                {
+                    var recommendedProduct = new DjangoRecommendedProduct
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("id")),
+                        Ranking = reader.GetInt32(reader.GetOrdinal("ranking")),
+                        PrimaryId = reader.GetInt32(reader.GetOrdinal("primary_id")),
+                        RecommendationId = reader.GetInt32(reader.GetOrdinal("recommendation_id")) 
+                    };
+                    recommendedProducts.Add(recommendedProduct);
+                }
+            });
+
+            return recommendedProducts;
+        }
+
+
         private (string attributeName, string attributeValue) Django_Attribute(int productId, int optionGrouId)
         {
             
@@ -939,7 +1194,7 @@ namespace nopCommerceReplicatorServices.Django
                     and id = (select attribute_id FROM public.catalogue_productattributevalue WHERE product_id = {productId} and attribute_id = attribute.id and value_boolean = true)
                 """;
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             string attributeValue = string.Empty;
 
@@ -951,7 +1206,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return (attributeValue, AttributeGroups.GetValueOrDefault(optionGrouId));
         }
@@ -964,7 +1219,7 @@ namespace nopCommerceReplicatorServices.Django
 
             var categories = new List<DjanogCategory>();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -986,7 +1241,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return categories;
         }
@@ -999,7 +1254,7 @@ namespace nopCommerceReplicatorServices.Django
 
             var manufacturers = new List<DjangoManufatorer>();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -1018,7 +1273,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return manufacturers;
         }
@@ -1033,7 +1288,7 @@ namespace nopCommerceReplicatorServices.Django
 
             var manufacturers = new List<DjangoManufatorer>();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -1052,20 +1307,20 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return manufacturers;
         }
-        private List<DjangoPicture> Django_GetPicture()
+        private List<DjangoPicture> Django_GetPicture(int djangoProductId, int djangoPictureId)
         {
-            string query = """
+            string query = $"""
         SELECT id, original, caption, display_order, date_created, watermark, product_id
-        FROM public.catalogue_productimage;
+        FROM public.catalogue_productimage where product_id = {djangoProductId} and id = {djangoPictureId} order by display_order ASC;
         """;
 
             var pictures = new List<DjangoPicture>();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -1085,7 +1340,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return pictures;
         }
@@ -1099,7 +1354,7 @@ namespace nopCommerceReplicatorServices.Django
 
             var pictures = new List<DjangoPicture>();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -1108,7 +1363,7 @@ namespace nopCommerceReplicatorServices.Django
                     var picture = new DjangoPicture
                     {
                         Id = reader.GetInt32(reader.GetOrdinal("id")),
-                        Original = reader.GetString(reader.GetOrdinal("original")),
+                        Original = "https://stolargo.pl/media/" + reader.GetString(reader.GetOrdinal("original")),
                         Caption = reader.IsDBNull(reader.GetOrdinal("caption")) ? null : reader.GetString(reader.GetOrdinal("caption")),
                         DisplayOrder = reader.GetInt32(reader.GetOrdinal("display_order")),
                         DateCreated = reader.GetDateTime(reader.GetOrdinal("date_created")),
@@ -1119,7 +1374,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return pictures;
         }
@@ -1162,12 +1417,12 @@ namespace nopCommerceReplicatorServices.Django
                     hafele_api_catalog_link, 
                     gtv_api, 
                     gtv_api_catalog_link
-                FROM public.catalogue_product;
+                FROM public.catalogue_product where is_public = true;
                 """;
 
             var products = new List<DjangoCataloguProduct>();
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -1213,7 +1468,7 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return products;
         }
@@ -1230,7 +1485,7 @@ namespace nopCommerceReplicatorServices.Django
             decimal price = 0;
             int stock = 0;
 
-            _dbConnector.OpenConnection();
+            //_dbConnector.OpenConnection();
 
             _dbConnector.ExecuteQuery(query, (reader) =>
             {
@@ -1241,10 +1496,11 @@ namespace nopCommerceReplicatorServices.Django
                 }
             });
 
-            _dbConnector.CloseConnection();
+            //_dbConnector.CloseConnection();
 
             return (price, stock);
         }
+
 
 
 
