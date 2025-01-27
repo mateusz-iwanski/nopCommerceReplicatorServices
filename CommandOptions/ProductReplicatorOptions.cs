@@ -66,11 +66,35 @@ namespace nopCommerceReplicatorServices.CommandOptions
             //await djFrom.O_ManufacturerCreateDto();
 
             var djangoProducts = djFrom.Django_GetAllProducts();
+
+            await djFrom.SetAllProducts();
+
+            int count = 0;
+
             foreach (var productDjango in djangoProducts)
             {
-                await djFrom.O_ProductCreateMinimalDto(productDjango.Id);
-                break;
+                if (!await djFrom.O_ProductGetBySku(productDjango.Upc))
+                {
+
+                    try
+                    {
+                        count++;
+                        var existing = djFrom.Django_CataloguProduct(productDjango.Id);
+
+                        //var existsInNopCommerce = await djFrom.O_ProductExists(productDjango.Id);
+
+                        if (existing.Id != 0)
+                        {
+                            await djFrom.O_ProductCreateMinimalDto(productDjango.Id);
+                            if (count == 50) break;
+                        }
+                    }
+                    catch { continue; }
+                }
+
             }
+
+            djFrom.closeConnection();
         }
 
         /// <summary>
