@@ -62,9 +62,19 @@ namespace nopCommerceReplicatorServices
 
         public void OpenConnection()
         {
-            if (_connection == null)
-                throw new Exception("DBConnector has no initialized connection. Use Initialize() before OpenConnection()");
+            while (_connection.State != System.Data.ConnectionState.Closed && _connection.State != System.Data.ConnectionState.Broken)
+            {
+                // Wait for the connection to close
+                System.Threading.Thread.Sleep(100);
+                Console.WriteLine("Waiting for the connection with DB to close...");
+            }
+
             _connection.Open();
+
+
+            //if (_connection == null)
+            //    throw new Exception("DBConnector has no initialized connection. Use Initialize() before OpenConnection()");
+            //_connection.Open();
         }
 
         public void ExecuteQuery(string query, Action<DbDataReader> work)
